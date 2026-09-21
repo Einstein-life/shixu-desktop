@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>时序悬浮窗</title>
+  <style>
+    :root {
+      --chrome:#0F141A; --chrome2:#1A2330; --paper:#EEF2F6; --card:#fff;
+      --ink:#16202C; --muted:#7B8798; --line:#D5DCE5;
+      --now:#D64532; --today:#C47A0A; --week:#1F7A70; --deep:#3D4DB7; --ok:#2F8F5C;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html, body {
+      width:100%; height:100%; overflow:hidden;
+      font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+      background:transparent; color:var(--ink); user-select:none;
+    }
+    #shell {
+      width:100%; height:100%;
+      background:var(--chrome);
+      border:1px solid #243041;
+      border-radius:12px;
+      display:flex; flex-direction:column;
+      overflow:hidden;
+    }
+    #shell.has-now { background:#2A0F0C; border-color:#5A2018; }
+    .drag { -webkit-app-region: drag; }
+    .nodrag { -webkit-app-region: no-drag; }
+    .top {
+      display:flex; align-items:center; gap:8px;
+      padding:8px 10px 6px;
+    }
+    .badge {
+      font-family:"Segoe UI",sans-serif; font-weight:700; font-size:11px;
+      color:#fff; padding:3px 8px; border-radius:6px; background:#8B1E14;
+    }
+    .badge.now { background:#C62828; font-size:12px; }
+    .badge.today { background:var(--today); }
+    .badge.wait { background:#3D4DB7; }
+    .badge.ready { background:#9F1239; }
+    .spacer { flex:1; }
+    .hint { color:#6B7A90; font-size:11px; }
+    .btn {
+      border:none; border-radius:6px; padding:3px 8px; font-size:12px;
+      cursor:pointer; color:#fff; background:var(--chrome2);
+    }
+    .btn:hover { filter:brightness(1.1); }
+    .body { flex:1; overflow:auto; padding:2px 10px 10px; }
+    .line {
+      padding:4px 6px; margin-bottom:4px; border-radius:6px;
+      font-size:12px; line-height:1.35; word-break:break-word;
+    }
+    .line.now { background:#2A0F0C; color:#FF8A7A; font-weight:700; font-size:13px; }
+    .line.ready { background:#3A1018; color:#FFB4A8; font-weight:700; }
+    .line.wait { background:#152040; color:#9BB0FF; font-weight:700; }
+    .line.today { background:#2A2010; color:#FFD28A; font-weight:700; }
+    .line.other { background:#121A26; color:#C5D0DC; }
+    .empty { color:#9AABBC; font-size:13px; padding:12px 6px; }
+    .panel { display:none; height:100%; flex-direction:column; }
+    .panel.open { display:flex; }
+    .slots { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:0 10px 8px; }
+    .slot {
+      border:1px solid #2A3850; background:#121A26; color:#C5D0DC;
+      border-radius:8px; min-height:32px; font-size:12px; font-weight:700; cursor:pointer;
+    }
+    .slot.on { background:#2A3F8F; border-color:#5B6FD4; color:#fff; }
+    .rec {
+      margin:0 10px 8px; padding:8px 10px; border-radius:8px;
+      background:#0F1A2E; color:#C8D8FF; font-size:12px; line-height:1.4;
+    }
+    .rec.urgent { background:#2A0F0C; color:#FFD0C8; font-weight:700; }
+    .cards { flex:1; overflow:auto; padding:0 8px 8px; }
+    .card {
+      background:#121A26; border:1px solid #243041; border-left:4px solid var(--muted);
+      border-radius:8px; padding:8px 10px; margin-bottom:6px;
+    }
+    .card.now { border-left-color:var(--now); background:#FFF1EF; }
+    .card.ready { border-left-color:#9F1239; background:#FFF0F3; }
+    .card.wait { border-left-color:#3D4DB7; background:#EEF0FA; }
+    .card.title-dark { color:var(--ink); }
+    .card .t { font-size:13px; font-weight:700; color:var(--ink); margin-bottom:4px; word-break:break-word; }
+    .card.now .t { color:#9F1239; font-size:14px; }
+    .card.ready .t { color:#9F1239; }
+    .card.wait .t { color:#2A3F8F; }
+    .meta { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+    .chip {
+      font-size:10px; padding:2px 6px; border-radius:999px; background:#EBEFF4; color:#3D4A5C;
+    }
+    .chip.hot { background:#FCEBE8; color:#D64532; }
+    .chip.blue { background:#EEF0FA; color:#3D4DB7; }
+    .acts { display:flex; flex-wrap:wrap; gap:4px; }
+    .acts button {
+      border:none; border-radius:6px; padding:4px 8px; font-size:11px; cursor:pointer;
+      background:#EBEFF4; color:#16202C;
+    }
+    .acts button.primary { background:#3D4DB7; color:#fff; }
+    .acts button.danger { background:#D64532; color:#fff; }
+    .acts button.warn { background:#FFD6D0; color:#9F1239; }
+    .foot {
+      display:flex; gap:6px; padding:8px 10px; border-top:1px solid #243041;
+    }
+    .foot button {
+      flex:1; border:none; border-radius:8px; min-height:34px; font-size:12px;
+      cursor:pointer; background:var(--chrome2); color:#fff; font-weight:600;
+    }
+    .foot button.primary { background:#2A3F8F; }
+  </style>
+</head>
+<body>
+  <div id="shell">
+    <!-- collapsed -->
+    <div id="collapsed" class="panel open">
+      <div class="top drag">
+        <span class="badge now nodrag" id="badgeNow">立刻 0</span>
+        <span class="badge today nodrag" id="badgeToday">今日 0</span>
+        <span class="spacer"></span>
+        <span class="hint">点击展开</span>
+        <button class="btn nodrag" id="btnExpand" title="展开">＋</button>
+        <button class="btn nodrag" id="btnClose" title="退出">×</button>
+      </div>
+      <div class="body nodrag" id="peekBody">
+        <div class="empty">点击展开调度…</div>
+      </div>
+    </div>
+
+    <!-- expanded -->
+    <div id="expanded" class="panel">
+      <div class="top drag">
+        <strong style="color:#F4F7FA;font-size:13px">时序 · 生信调度</strong>
+        <span class="hint nodrag">⠿ 可拖动</span>
+        <span class="spacer"></span>
+        <button class="btn nodrag" id="btnCollapse">—</button>
+      </div>
+      <div class="slots nodrag" id="slots"></div>
+      <div class="rec nodrag" id="rec">选择连续时间后推荐可推进事项</div>
+      <div class="cards nodrag" id="cards"></div>
+      <div class="foot nodrag">
+        <button id="btnMain">完整视图</button>
+        <button id="btnAddTime" class="primary">+30分</button>
+        <button id="btnReload">刷新</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SLOT_LABELS = { "15":"≤15分", "30":"30分", "60":"1小时", "120":"2小时+" };
+    const CATS = {
+      analysis:"分析", paper:"写文章", project:"写项目",
+      literature:"文献", meeting:"会议", admin:"杂务"
+    };
+    const DL = {
+      overdue:"已超期", today:"今天", tomorrow:"明天",
+      three_days:"3天内", this_week:"本周", later:"更晚"
+    };
+
+    let state = null;
+    let expanded = false;
+
+    function $(id){ return document.getElementById(id); }
+
+    function computeScore(t) {
+      const urgency = {overdue:12,today:10,tomorrow:8,three_days:6,this_week:4,later:2}[t.deadline] || 2;
+      const impact = {severe:5,others:4,mild:2,none:0}[t.impact] ?? 2;
+      const flex = {only_me:2,partial:0,deferrable:-2,drop:-4}[t.flex] || 0;
+      let s = urgency + impact + flex;
+      const deep = t.focus === "deep" || (!t.focus && ["analysis","paper","project"].includes(t.cat));
+      if (deep && ["today","overdue","tomorrow"].includes(t.deadline)) s += 2;
+      return Math.max(0, Math.min(22, s));
+    }
+
+    function normalize(data) {
+      const tasks = (data.tasks || []).map((t, i) => ({
+        ...t,
+        id: t.id || "t_" + i,
+        title: t.title || "未命名",
+        cat: CATS[t.cat] ? t.cat : "admin",
+        deadline: DL[t.deadline] ? t.deadline : "later",
+        run_state: ["waiting","ready"].includes((t.run_state||"").toLowerCase()) && !t.done
+          ? t.run_state.toLowerCase() : "",
+        score: Number(t.score) || computeScore(t),
+        done: !!t.done,
+        time_spent: Number(t.time_spent) || 0,
+        progress: Number(t.progress) || (t.done ? 100 : 0)
+      }));
+      return {
+        version: 3,
+        slot: data.slot || "60",
+        capacity_hours: data.capacity_hours || 6,
+        projects: data.projects || [],
+        tasks,
+        summaries: data.summaries || []
+      };
+    }
+
+    function activeTasks() {
+      return (state.tasks || []).filter((t) => !t.done)
+        .sort((a,b) => (b.score||0) - (a.score||0) || (a.createdAt||0)-(b.createdAt||0));
+    }
+
+    function parallelTasks() {
+      return activeTasks().filter((t) => !t.run_state);
+    }
+
+    function effortFit(t, slot) {
+      if (!slot) return true;
+      const hours = {m15:0.25,m30:0.5,h1:1,h2:2,half:3.5,day:8}[t.effort] || 1;
+      return hours * 60 <= parseInt(slot,10) + 1;
+    }
+
+    function save() {
+      if (window.shixu && state) {
+        return window.shixu.save(state);
+      }
+      return Promise.resolve(state);
+    }
+
+    function renderBadges() {
+      const act = activeTasks();
+      const now = act.filter((t) => !t.run_state && t.score >= 12).length;
+      const today = act.filter((t) => !t.run_state && t.score >= 9 && t.score < 12).length;
+      const waiting = act.filter((t) => t.run_state === "waiting").length;
+      const ready = act.filter((t) => t.run_state === "ready").length;
+      const bn = $("badgeNow"), bt = $("badgeToday");
+      bn.textContent = "立刻 " + now;
+      bn.className = "badge nodrag" + (now ? " now" : "");
+      if (ready) { bt.textContent = "待处理" + ready; bt.className = "badge nodrag ready"; }
+      else if (waiting) { bt.textContent = "等待" + waiting; bt.className = "badge nodrag wait"; }
+      else { bt.textContent = "今日 " + today; bt.className = "badge nodrag today"; }
+
+      const shell = $("shell");
+      shell.classList.toggle("has-now", now > 0 || ready > 0);
+    }
+
+    function renderPeek() {
+      const act = activeTasks();
+      const ready = act.filter((t) => t.run_state === "ready");
+      const waiting = act.filter((t) => t.run_state === "waiting");
+      const parallel = act.filter((t) => !t.run_state);
+      const html = [];
+      ready.slice(0,2).forEach((t) => html.push(`<div class="line ready">【处理结果】${esc(t.title)}</div>`));
+      if (waiting.length) {
+        html.push(`<div class="line wait">⏳ 等待 ${waiting.length} 项 · 人可并行</div>`);
+      }
+      parallel.slice(0,3).forEach((t) => {
+        const cls = t.score >= 12 ? "now" : (t.score >= 9 ? "today" : "other");
+        const prefix = t.score >= 12 ? "【立刻】" : (t.score >= 9 ? "［今日］" : "【可并行】");
+        html.push(`<div class="line ${cls}">${prefix}${esc(t.title)}</div>`);
+      });
+      $("peekBody").innerHTML = html.length ? html.join("") : `<div class="empty">今日已清空<br/>展开后可录入（在完整视图）</div>`;
+    }
+
+    function renderSlots() {
+      const slot = state.slot || "60";
+      $("slots").innerHTML = Object.entries(SLOT_LABELS).map(([k,label]) =>
+        `<button type="button" class="slot nodrag ${k===slot?"on":""}" data-slot="${k}">${label}</button>`
+      ).join("");
+    }
+
+    function renderRec() {
+      const act = activeTasks();
+      const ready = act.filter((t) => t.run_state === "ready");
+      const waiting = act.filter((t) => t.run_state === "waiting");
+      const poolAll = act.filter((t) => !t.run_state);
+      const slot = state.slot;
+      let pool = poolAll.filter((t) => effortFit(t, slot) && (t.score||0) >= 4);
+      if (!pool.length) pool = poolAll;
+      const parts = [];
+      if (ready.length) parts.push("结果已到：" + ready[0].title);
+      if (waiting.length) parts.push("等待中 " + waiting.length + " 项，人可并行");
+      if (pool.length) parts.push((waiting.length || ready.length ? "并行建议：" : "现在建议：") + pool[0].title);
+      const rec = $("rec");
+      rec.textContent = parts.length ? parts.join(" · ") : "暂无待办，可到完整视图录入";
+      rec.classList.toggle("urgent", !!ready.length || (pool[0] && pool[0].score >= 12 && !waiting.length));
+    }
+
+    function renderCards() {
+      const act = activeTasks();
+      const ready = act.filter((t) => t.run_state === "ready");
+      const waiting = act.filter((t) => t.run_state === "waiting");
+      const parallel = act.filter((t) => !t.run_state);
+      const items = [...ready, ...waiting, ...parallel].slice(0, 8);
+      if (!items.length) {
+        $("cards").innerHTML = `<div class="empty">没有待办</div>`;
+        return;
+      }
+      $("cards").innerHTML = items.map((t) => {
+        const cls = t.run_state === "ready" ? "ready" : t.run_state === "waiting" ? "wait" : (t.score >= 12 ? "now" : "");
+        const chips = [
+          CATS[t.cat] || t.cat,
+          DL[t.deadline] || t.deadline,
+          "分" + t.score,
+          "工时 " + t.time_spent + "h",
+          "进度 " + (t.done ? 100 : t.progress) + "%"
+        ];
+        if (t.run_state === "waiting") chips.push("机器运行中");
+        if (t.run_state === "ready") chips.push("待处理结果");
+        return `<div class="card ${cls} title-dark" data-id="${t.id}">
+          <div class="t">${esc(t.title)}</div>
+          <div class="meta">${chips.map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>
+          <div class="acts">
+            ${t.run_state === "waiting" ? `
+              <button class="primary" data-act="run" data-rs="ready">结果已到</button>
+              <button data-act="run" data-rs="">取消等待</button>` : ""}
+            ${t.run_state === "ready" ? `
+              <button class="danger" data-act="done">处理完成</button>
+              <button data-act="run" data-rs="">仍需跟进</button>` : ""}
+            ${!t.run_state ? `
+              <button class="warn" data-act="run" data-rs="waiting">提交等待</button>
+              <button data-act="time" data-h="0.25">+15分</button>
+              <button data-act="time" data-h="0.5">+30分</button>` : ""}
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function esc(s) {
+      return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    function render() {
+      if (!state) return;
+      renderBadges();
+      renderPeek();
+      renderSlots();
+      renderRec();
+      renderCards();
+    }
+
+    function setExpanded(v) {
+      expanded = !!v;
+      $("collapsed").classList.toggle("open", !expanded);
+      $("expanded").classList.toggle("open", expanded);
+      if (window.shixu && window.shixu.dockSetSize) window.shixu.dockSetSize(expanded);
+    }
+
+    async function init() {
+      if (window.shixu) {
+        state = normalize(await window.shixu.load());
+        window.shixu.onUpdate((data) => {
+          state = normalize(data || {});
+          render();
+        });
+      } else {
+        state = normalize({ tasks: [], projects: [] });
+      }
+      render();
+    }
+
+    $("btnExpand").addEventListener("click", () => setExpanded(true));
+    $("btnCollapse").addEventListener("click", () => setExpanded(false));
+    $("btnClose").addEventListener("click", () => {
+      if (window.shixu) window.shixu.hideDock();
+    });
+    $("btnMain").addEventListener("click", () => {
+      if (window.shixu) window.shixu.openMain();
+    });
+    $("btnReload").addEventListener("click", async () => {
+      if (window.shixu) state = normalize(await window.shixu.load());
+      render();
+    });
+    $("btnAddTime").addEventListener("click", async () => {
+      const t = activeTasks().filter((x) => !x.run_state)[0];
+      if (!t) return;
+      t.time_spent = Math.round(((Number(t.time_spent)||0) + 0.5) * 100) / 100;
+      state.tasks = state.tasks.map((x) => x.id === t.id ? t : x);
+      await save();
+      render();
+    });
+
+    $("slots").addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-slot]");
+      if (!b) return;
+      const v = b.getAttribute("data-slot");
+      state.slot = state.slot === v ? "60" : v;
+      await save();
+      render();
+    });
+
+    $("cards").addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-act]");
+      if (!btn) return;
+      const card = btn.closest("[data-id]");
+      if (!card) return;
+      const id = card.getAttribute("data-id");
+      const t = state.tasks.find((x) => x.id === id);
+      if (!t) return;
+      const act = btn.getAttribute("data-act");
+      if (act === "time") {
+        t.time_spent = Math.round(((Number(t.time_spent)||0) + Number(btn.getAttribute("data-h"))) * 100) / 100;
+      } else if (act === "done") {
+        t.done = true; t.progress = 100; t.run_state = "";
+        t.completedAt = new Date().toISOString();
+      } else if (act === "run") {
+        const rs = btn.getAttribute("data-rs") || "";
+        t.run_state = ["waiting","ready"].includes(rs) ? rs : "";
+        if (t.run_state === "waiting") t.done = false;
+      }
+      state.tasks = state.tasks.map((x) => x.id === t.id ? t : x);
+      await save();
+      render();
+    });
+
+    // click empty collapsed body expands
+    $("peekBody").addEventListener("click", (e) => {
+      if (!e.target.closest("button")) setExpanded(true);
+    });
+
+    init();
+  </script>
+</body>
+</html>

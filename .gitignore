@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output / installers (发布到 GitHub Releases，不进仓库)
+release/
+dist/
+out/
+
+# Certificates & secrets — never commit
+certs/
+*.pfx
+*.p12
+*.pem
+.env
+.env.*
+
+# Logs / local debug
+*.log
+electron-err.txt
+electron-out.txt
+err2.txt
+out2.txt
+v.txt
+ve.txt
+verr.txt
+vout.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Electron user data copies
+**/shixu-data.json
+**/shixu-settings.json

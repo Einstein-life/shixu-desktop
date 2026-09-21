@@ -1,0 +1,52 @@
+{
+  "name": "shixu",
+  "productName": "时序调度",
+  "version": "1.0.0",
+  "description": "时序 · 生信调度与项目进度（桌面版）",
+  "main": "electron/main.js",
+  "author": "时序",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "node build-prepackaged.js",
+    "dist:full": "node build-dist.js",
+    "pack:portable": "node -e \"console.log('Use release/时序调度-portable after build-dist or manual copy')\""
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "app.shixu.desktop",
+    "productName": "时序调度",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "electron/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "时序调度",
+      "artifactName": "时序调度-Setup-${version}.exe"
+    }
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
+  }
+}

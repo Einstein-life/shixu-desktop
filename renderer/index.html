@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F141A" />
+  <title>时序 · 生信调度与项目进度</title>
+  <style>
+    :root {
+      --ink: #16202C; --ink-soft: #3D4A5C; --muted: #7B8798;
+      --paper: #EEF2F6; --card: #fff; --line: #D5DCE5;
+      --chrome: #0F141A; --chrome2: #1A2330;
+      --now: #D64532; --now-bg: #FCEBE8;
+      --today: #C47A0A; --today-bg: #FFF4E0;
+      --week: #1F7A70; --week-bg: #E5F4F2;
+      --later: #6B7A90; --later-bg: #EBEFF4;
+      --deep: #3D4DB7; --deep-bg: #EEF0FA;
+      --done: #2F8F5C; --focus: #3D4DB7;
+      --analysis: #2166ac; --paper-w: #7c3aed; --project: #b45309;
+      --literature: #0f766e; --meeting: #9f1239; --admin: #64748b;
+      --shadow: 0 8px 28px rgba(15,20,26,.08); --radius: 14px; --tap: 44px;
+      --font: "PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+      --num: "Bahnschrift","DIN Alternate","Segoe UI",sans-serif;
+      --mono: "Cascadia Code",Consolas,monospace;
+    }
+    * { box-sizing: border-box; margin:0; padding:0; }
+    html { -webkit-text-size-adjust:100%; }
+    body { font-family:var(--font); color:var(--ink); background:#C9D2DC; min-height:100dvh; line-height:1.5; }
+    button,input,select,textarea { font:inherit; color:inherit; }
+    button { cursor:pointer; border:none; background:none; }
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible {
+      outline:2px solid var(--focus); outline-offset:2px;
+    }
+    .shell { max-width:430px; min-height:100dvh; margin:0 auto; background:var(--paper); box-shadow:0 0 40px rgba(15,20,26,.18); overflow-x:hidden; position:relative; }
+    .status { position:sticky; top:0; z-index:20; background:var(--chrome); color:#F4F7FA; padding:12px 14px 10px; border-bottom:1px solid #243041; }
+    .status-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:8px; }
+    .status-title { font-size:12px; letter-spacing:.08em; color:#9AABBC; }
+    .status-date { font-family:var(--mono); font-size:11px; color:#9AABBC; white-space:nowrap; }
+    .status-main { display:grid; grid-template-columns:1fr 1fr 1.1fr; gap:8px; }
+    .stat { background:var(--chrome2); border:1px solid #243041; border-radius:10px; padding:8px 10px; min-height:58px; }
+    .stat-val { font-family:var(--num); font-size:22px; font-weight:700; line-height:1.1; }
+    .stat-val.now { color:#FF6B5A; } .stat-val.deep { color:#9BB0FF; } .stat-val.proj { color:#7DD3C7; }
+    .stat-label { font-size:11px; color:#8FA0B2; margin-top:2px; }
+    .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:10px; }
+    .tab { min-height:36px; border-radius:8px; border:1px solid #2A3850; background:#121A26; color:#C5D0DC; font-size:13px; font-weight:600; }
+    .tab.on { background:#2A3F8F; border-color:#5B6FD4; color:#fff; }
+    .content { padding:14px 14px 120px; }
+    .banner,.info-card,.task,.proj-card,.empty,.panel {
+      background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .banner { padding:14px; margin-bottom:12px; }
+    .banner h1 { font-size:17px; font-weight:700; margin-bottom:4px; }
+    .banner p { font-size:13px; color:var(--ink-soft); }
+    .banner-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .btn { min-height:var(--tap); padding:0 14px; border-radius:10px; font-size:14px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+    .btn:active { transform:scale(.98); }
+    .btn-primary { background:var(--chrome); color:#fff; }
+    .btn-ghost { border:1px solid var(--line); color:var(--ink); }
+    .btn-soft { background:var(--deep-bg); color:var(--deep); border:1px solid #D5DAF5; }
+    .btn-danger-ghost { color:var(--now); border:1px solid #F0C4BD; }
+    .btn-mini { min-height:34px; padding:0 10px; font-size:12px; border-radius:8px; }
+    .sample-note { font-size:12px; color:var(--muted); margin-top:8px; }
+    .section-title { font-size:12px; font-weight:700; letter-spacing:.1em; color:var(--muted); margin:18px 0 8px; padding:0 2px; }
+    .filter-row { display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px; }
+    .filter-row::-webkit-scrollbar { display:none; }
+    .filter-chip { flex:0 0 auto; min-height:34px; padding:0 12px; border-radius:999px; border:1px solid var(--line); background:var(--card); font-size:12px; font-weight:600; color:var(--ink-soft); }
+    .filter-chip.on { background:var(--chrome); border-color:var(--chrome); color:#fff; }
+    .lane { margin-bottom:14px; }
+    .lane-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding:0 2px; }
+    .lane-title { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
+    .rail { width:4px; height:14px; border-radius:2px; }
+    .lane-count { font-family:var(--num); font-size:13px; color:var(--muted); }
+    .lane-desc { font-size:12px; color:var(--muted); margin-bottom:8px; padding:0 2px; }
+    .task { padding:12px 12px 12px 14px; margin-bottom:8px; position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(15,20,26,.04); }
+    .task::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--lane-color,var(--later)); }
+    .task.done { opacity:.55; }
+    .task.done .task-name { text-decoration:line-through; }
+    .task-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+    .task-name { font-size:15px; font-weight:600; line-height:1.35; word-break:break-word; }
+    .task-check { width:28px; height:28px; min-width:28px; border-radius:50%; border:1.5px solid var(--line); display:grid; place-items:center; color:transparent; }
+    .task.done .task-check { background:var(--done); border-color:var(--done); color:#fff; }
+    .task-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .chip { font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:999px; background:var(--later-bg); color:var(--ink-soft); white-space:nowrap; }
+    .chip.hot { background:var(--now-bg); color:var(--now); }
+    .chip.warn { background:var(--today-bg); color:var(--today); }
+    .chip.cool { background:var(--week-bg); color:var(--week); }
+    .chip.deep { background:var(--deep-bg); color:var(--deep); }
+    .chip.score { background:var(--chrome); color:#fff; font-family:var(--num); font-weight:700; }
+    .chip.cat-analysis { background:#E7F0FA; color:var(--analysis); }
+    .chip.cat-paper { background:#F3E8FF; color:var(--paper-w); }
+    .chip.cat-project { background:#FEF3C7; color:var(--project); }
+    .chip.cat-lit { background:#E6F6F4; color:var(--literature); }
+    .chip.cat-meet { background:#FCE7F0; color:var(--meeting); }
+    .chip.cat-admin { background:#F1F5F9; color:var(--admin); }
+    .chip.block { background:#FCEBE8; color:var(--now); }
+    .progress-line { margin-top:8px; }
+    .bar { height:6px; background:var(--later-bg); border-radius:3px; overflow:hidden; }
+    .bar > i { display:block; height:100%; background:var(--deep); border-radius:3px; }
+    .bar-text { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:4px; }
+    .task-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .empty { padding:22px 16px; text-align:center; }
+    .empty h2 { font-size:16px; margin-bottom:6px; }
+    .empty p { font-size:13px; color:var(--muted); margin-bottom:12px; }
+    .proj-card { padding:14px; margin-bottom:10px; }
+    .proj-top { display:flex; gap:12px; align-items:flex-start; }
+    .ring-wrap { width:64px; height:64px; position:relative; flex:0 0 auto; }
+    .ring-wrap svg { width:64px; height:64px; transform:rotate(-90deg); }
+    .ring-wrap .pct { position:absolute; inset:0; display:grid; place-items:center; font-family:var(--num); font-weight:700; font-size:14px; }
+    .proj-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+    .proj-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+    .ms-list { margin-top:12px; border-top:1px dashed var(--line); padding-top:8px; }
+    .ms-item { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:13px; }
+    .ms-item.done { color:var(--muted); text-decoration:line-through; }
+    .ms-btn { width:22px; height:22px; min-width:22px; border-radius:50%; border:1.5px solid var(--line); display:grid; place-items:center; font-size:12px; color:transparent; margin-top:1px; }
+    .ms-item.done .ms-btn { background:var(--done); border-color:var(--done); color:#fff; }
+    .ms-next { margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--today); white-space:nowrap; }
+    .timeline { display:grid; gap:8px; }
+    .tl-item { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; }
+    .tl-date { font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:4px; }
+    .tl-title { font-size:14px; font-weight:600; }
+    .tl-note { font-size:12px; color:var(--ink-soft); margin-top:4px; }
+    .summary-box { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:14px; }
+    .summary-box pre { white-space:pre-wrap; word-break:break-word; font-family:var(--mono); font-size:12px; line-height:1.55; color:var(--ink-soft); }
+    .panel { padding:14px; margin-bottom:10px; }
+    .panel h3 { font-size:14px; margin-bottom:6px; }
+    .panel p, .panel li { font-size:12px; color:var(--ink-soft); line-height:1.5; }
+    .panel ul { margin:6px 0 0 16px; }
+    .fab { position:fixed; left:50%; transform:translateX(-50%); bottom:max(16px, env(safe-area-inset-bottom)); z-index:30; width:min(402px, calc(100% - 28px)); display:grid; grid-template-columns:1.4fr 1fr; gap:8px; }
+    .fab .btn { min-height:48px; box-shadow:0 10px 24px rgba(15,20,26,.22); }
+    .sheet { position:fixed; inset:0; z-index:40; display:none; align-items:flex-end; justify-content:center; }
+    .sheet.open { display:flex; }
+    .sheet-backdrop { position:absolute; inset:0; background:rgba(15,20,26,.45); }
+    .sheet-panel { position:relative; width:min(430px,100%); max-height:92dvh; overflow:auto; background:var(--paper); border-radius:18px 18px 0 0; padding:16px 16px calc(20px + env(safe-area-inset-bottom)); animation:rise .22s ease; }
+    @keyframes rise { from { transform:translateY(20px); opacity:.6 } to { transform:translateY(0); opacity:1 } }
+    @media (prefers-reduced-motion:reduce) { .sheet-panel,.btn { animation:none!important; transition:none!important } }
+    .wizard-step-label { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.08em; margin-bottom:6px; }
+    .wizard-q { font-size:20px; font-weight:700; margin-bottom:6px; line-height:1.3; }
+    .wizard-hint { font-size:13px; color:var(--ink-soft); margin-bottom:14px; }
+    .field { margin-bottom:12px; }
+    .field label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; }
+    .field input,.field select,.field textarea { width:100%; min-height:var(--tap); border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--card); }
+    .field textarea { min-height:72px; resize:vertical; }
+    .choices { display:grid; gap:8px; }
+    .choice { text-align:left; background:var(--card); border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; min-height:48px; }
+    .choice strong { display:block; font-size:14px; margin-bottom:2px; }
+    .choice span { font-size:12px; color:var(--muted); }
+    .choice.sel { border-color:var(--chrome); box-shadow:inset 0 0 0 1px var(--chrome); }
+    .wizard-nav { display:grid; grid-template-columns:1fr 1.4fr; gap:8px; margin-top:8px; }
+    .toast { position:fixed; left:50%; transform:translateX(-50%) translateY(20px); bottom:84px; z-index:50; background:var(--chrome); color:#fff; font-size:13px; padding:10px 16px; border-radius:999px; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; max-width:90%; text-align:center; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .time-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="status">
+    <div class="status-top">
+      <div class="status-title">时序 · 生信调度与项目进度</div>
+      <div class="status-date" id="statusDate">—</div>
+    </div>
+    <div class="status-main">
+      <div class="stat"><div class="stat-val now" id="statNow">0</div><div class="stat-label">立刻处理</div></div>
+      <div class="stat"><div class="stat-val deep" id="statDeep">0</div><div class="stat-label">进行中项目</div></div>
+      <div class="stat"><div class="stat-val proj" id="statHours">0h</div><div class="stat-label">本周投入</div></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab on" type="button" data-tab="board" role="tab">调度</button>
+      <button class="tab" type="button" data-tab="projects" role="tab">项目进度</button>
+      <button class="tab" type="button" data-tab="review" role="tab">回看 / 周报</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- BOARD -->
+    <section id="view-board">
+      <div class="banner">
+        <h1>碎片化日常的执行台</h1>
+        <p>分析可「提交等待」：程序跑着时人去做可并行事项；结果到了会升到顶部「处理结果」。长期工作仍在「项目进度」。</p>
+        <div class="banner-actions">
+          <button class="btn btn-primary" type="button" id="btnAddTask">录入事项</button>
+          <button class="btn btn-ghost" type="button" id="btnAddProject">新建项目</button>
+          <button class="btn btn-soft" type="button" id="btnSyncDesk">同步桌面</button>
+        </div>
+        <div class="banner-actions" id="desktopTools">
+          <button class="btn btn-ghost" type="button" id="btnExportDesk">一键导出</button>
+          <button class="btn btn-ghost" type="button" id="btnImportDesk">一键导入</button>
+          <button class="btn btn-ghost" type="button" id="btnAutoStart">开机自启：检测中</button>
+          <button class="btn btn-ghost" type="button" id="btnRevealData">数据位置</button>
+        </div>
+        <div class="sample-note" id="deskStatus">桌面端：检测中…</div>
+        <div class="sample-note" id="parallelHint"></div>
+      </div>
+      <div class="filter-row" id="filterRow"></div>
+      <div id="lanes"></div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section id="view-projects" hidden>
+      <div class="banner">
+        <h1>长期工作进度</h1>
+        <p>里程碑完成数 + 进度环 + 计划/已投入工时 + 阻塞与截止日。点里程碑即更新，下一步会显示在悬浮窗。</p>
+        <div class="banner-actions">
+          <button class="btn btn-primary" type="button" id="btnAddProject2">新建项目</button>
+          <button class="btn btn-ghost" type="button" id="btnSyncDesk2">同步桌面</button>
+        </div>
+      </div>
+      <div id="projectList"></div>
+      <div class="section-title">效率法则</div>
+      <div id="rules"></div>
+    </section>
+
+    <!-- REVIEW -->
+    <section id="view-review" hidden>
+      <div class="banner">
+        <h1>回看与周总结</h1>
+        <p>按时间线归档已完成事项，一键生成本周 Markdown 草稿，便于组会、考核与自我复盘。</p>
+        <div class="banner-actions">
+          <button class="btn btn-primary" type="button" id="btnGenSummary">生成本周总结</button>
+          <button class="btn btn-ghost" type="button" id="btnExportSummary">导出 Markdown</button>
+          <button class="btn btn-soft" type="button" id="btnExportAll">导出全部数据</button>
+          <button class="btn btn-ghost" type="button" id="btnImportAll">导入 JSON</button>
+        </div>
+      </div>
+      <div class="section-title">本周总结草稿</div>
+      <div class="summary-box"><pre id="summaryOut">点「生成本周总结」查看草稿。</pre></div>
+      <div class="section-title">已完成时间线</div>
+      <div class="timeline" id="archiveList"></div>
+    </section>
+  </main>
+
+  <div class="fab">
+    <button class="btn btn-primary" type="button" id="btnFab">＋ 快速操作</button>
+    <button class="btn btn-ghost" type="button" id="btnHelp">说明</button>
+  </div>
+</div>
+
+<div class="sheet" id="formSheet" role="dialog" aria-modal="true">
+  <div class="sheet-backdrop" id="formBackdrop"></div>
+  <div class="sheet-panel" id="formBody"></div>
+</div>
+<div class="sheet" id="helpSheet" role="dialog" aria-modal="true">
+  <div class="sheet-backdrop" id="helpBackdrop"></div>
+  <div class="sheet-panel">
+    <div class="wizard-step-label">HOW TO</div>
+    <div class="wizard-q">怎么用这套系统</div>
+    <div class="wizard-hint">调度管今天，项目管长期，回看管总结。</div>
+    <div id="helpCards"></div>
+    <div class="wizard-nav" style="margin-top:12px">
+      <button class="btn btn-ghost" type="button" id="btnHelpSync">同步桌面</button>
+      <button class="btn btn-primary" type="button" id="btnCloseHelp">知道了</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  const DESK_API = "http://127.0.0.1:8790";
+  const STORE_KEY = "shixu-bio-v3-store";
+  const CATS = {
+    analysis: { label: "分析/管线", cls: "cat-analysis", deep: true, color: "#2166ac" },
+    paper: { label: "写文章", cls: "cat-paper", deep: true, color: "#7c3aed" },
+    project: { label: "写项目", cls: "cat-project", deep: true, color: "#b45309" },
+    literature: { label: "读文献", cls: "cat-lit", deep: false, color: "#0f766e" },
+    meeting: { label: "听汇报/会议", cls: "cat-meet", deep: false, color: "#9f1239" },
+    admin: { label: "杂务/沟通", cls: "cat-admin", deep: false, color: "#64748b" }
+  };
+  const DEADLINES = {
+    overdue: { label: "已超期", urgency: 12 },
+    today: { label: "今天截止", urgency: 10 },
+    tomorrow: { label: "明天截止", urgency: 8 },
+    three_days: { label: "3天内", urgency: 6 },
+    this_week: { label: "本周内", urgency: 4 },
+    later: { label: "更晚/无硬截止", urgency: 2 }
+  };
+  const IMPACTS = {
+    severe: { label: "严重损失", impact: 5 },
+    others: { label: "影响他人", impact: 4 },
+    mild: { label: "有点麻烦", impact: 2 },
+    none: { label: "几乎没事", impact: 0 }
+  };
+  const EFFORTS = {
+    m15: { label: "≤15分", hours: .25 },
+    m30: { label: "约30分", hours: .5 },
+    h1: { label: "约1小时", hours: 1 },
+    h2: { label: "约2小时", hours: 2 },
+    half: { label: "约半天", hours: 3.5 },
+    day: { label: "1天+", hours: 8 }
+  };
+  const FLEX = {
+    only_me: { label: "只能我做", bonus: 2 },
+    partial: { label: "可委托", bonus: 0 },
+    deferrable: { label: "可延后", bonus: -2 },
+    drop: { label: "可取消", bonus: -4 }
+  };
+  const RULES = [
+    { h: "一深度一主线", p: "每天只设 1–2 个深度主线；项目里程碑负责「长期」，调度事项负责「今天推进哪一步」。" },
+    { h: "项目先锁下一步", p: "打开项目只看第一个未完成里程碑，并生成一条对应的今日事项，避免长期任务永远停在「有空再做」。" },
+    { h: "完成必留一句结果", p: "勾选完成时写「结果备注」（结论、路径、产出），否则回看只剩任务名，周报也没法写材料。" },
+    { h: "工时用快捷累加", p: "+15分/+30分/+1h 点按即可；周报用「计划 vs 已投入」判断是否超载或低估。" },
+    { h: "阻塞要写出来", p: "等数据/等人/等审批写进阻塞栏，周报会单独列出，避免自己忘记催。" }
+  ];
+
+  let state = loadState();
+  let tab = "board";
+  let filter = "all";
+  let formMode = null;
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    statusDate: $("statusDate"), statNow: $("statNow"), statDeep: $("statDeep"), statHours: $("statHours"),
+    lanes: $("lanes"), filterRow: $("filterRow"), projectList: $("projectList"), rules: $("rules"),
+    archiveList: $("archiveList"), summaryOut: $("summaryOut"), deskStatus: $("deskStatus"),
+    formSheet: $("formSheet"), formBody: $("formBody"), helpSheet: $("helpSheet"), toast: $("toast")
+  };
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data && Array.isArray(data.tasks)) return normalizeState(data);
+      }
+    } catch (_) {}
+    return emptyState();
+  }
+
+  function emptyState() {
+    return { version: 3, slot: "60", capacity_hours: 6, projects: [], tasks: [], summaries: [] };
+  }
+
+  function normalizeState(data) {
+    const s = {
+      version: 3,
+      slot: data.slot || "60",
+      capacity_hours: data.capacity_hours || 6,
+      projects: Array.isArray(data.projects) ? data.projects.map(normalizeProject) : [],
+      tasks: Array.isArray(data.tasks) ? data.tasks.map(normalizeTask) : [],
+      summaries: Array.isArray(data.summaries) ? data.summaries : []
+    };
+    return s;
+  }
+
+  function normalizeProject(p) {
+    return {
+      id: p.id || uid("p"),
+      title: p.title || "未命名项目",
+      cat: CATS[p.cat] ? p.cat : "analysis",
+      deadline: DEADLINES[p.deadline] ? p.deadline : "later",
+      deadline_date: p.deadline_date || "",
+      status: p.status === "done" ? "done" : "active",
+      time_planned_hours: Number(p.time_planned_hours) || 0,
+      time_spent_hours: Number(p.time_spent_hours) || 0,
+      blocker: p.blocker || "",
+      summary: p.summary || "",
+      createdAt: p.createdAt || Date.now(),
+      completedAt: p.completedAt || null,
+      milestones: Array.isArray(p.milestones) ? p.milestones.map((m, i) => ({
+        id: m.id || "m" + (i + 1),
+        title: m.title || ("里程碑 " + (i + 1)),
+        done: !!m.done,
+        doneAt: m.doneAt || null,
+        deadline: m.deadline || ""
+      })) : []
+    };
+  }
+
+  function normalizeTask(t) {
+    const cat = CATS[t.cat] ? t.cat : "admin";
+    return {
+      id: t.id || uid("t"),
+      title: t.title || "未命名事项",
+      cat,
+      deadline: DEADLINES[t.deadline] ? t.deadline : "later",
+      impact: IMPACTS[t.impact] ? t.impact : "mild",
+      effort: EFFORTS[t.effort] ? t.effort : "h1",
+      flex: FLEX[t.flex] ? t.flex : "only_me",
+      focus: t.focus || (CATS[cat].deep ? "deep" : "shallow"),
+      score: Number(t.score) || computeScore(t),
+      done: !!t.done,
+      run_state: ["waiting","ready"].includes((t.run_state||"").toLowerCase()) && !t.done ? t.run_state.toLowerCase() : "",
+      wait_note: t.wait_note || "",
+      wait_started_at: t.wait_started_at || null,
+      progress: Number.isFinite(Number(t.progress)) ? Number(t.progress) : (t.done ? 100 : 0),
+      time_planned: Number(t.time_planned) || EFFORTS[t.effort].hours,
+      time_spent: Number(t.time_spent) || 0,
+      blocker: t.blocker || "",
+      project_id: t.project_id || null,
+      createdAt: t.createdAt || Date.now(),
+      completedAt: t.completedAt || null,
+      result_note: t.result_note || ""
+    };
+  }
+
+  function uid(prefix) {
+    return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function saveState(push = true) {
+    state.tasks = state.tasks.map(normalizeTask);
+    state.projects = state.projects.map(normalizeProject);
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (_) {}
+    if (push) pushToDesktop(false);
+  }
+
+  function computeScore(t) {
+    const u = DEADLINES[t.deadline]?.urgency ?? 2;
+    const i = IMPACTS[t.impact]?.impact ?? 2;
+    const f = FLEX[t.flex]?.bonus ?? 0;
+    let s = u + i + f;
+    const deep = t.focus === "deep" || (CATS[t.cat] && CATS[t.cat].deep && t.focus !== "shallow");
+    if (deep && ["today", "overdue", "tomorrow"].includes(t.deadline)) s += 2;
+    if (t.cat === "admin" && t.impact === "mild") s -= 1;
+    return Math.max(0, Math.min(22, s));
+  }
+
+  function isDeep(t) {
+    return t.focus === "deep" || (CATS[t.cat] && CATS[t.cat].deep && t.focus !== "shallow");
+  }
+
+  function projProgress(p) {
+    if (!p.milestones.length) {
+      return p.status === "done" ? 100 : 0;
+    }
+    const done = p.milestones.filter((m) => m.done).length;
+    return Math.round((done / p.milestones.length) * 100);
+  }
+
+  function nextMilestone(p) {
+    return p.milestones.find((m) => !m.done) || null;
+  }
+
+  function weekStart(d = new Date()) {
+    const x = new Date(d);
+    const day = (x.getDay() + 6) % 7;
+    x.setHours(0, 0, 0, 0);
+    x.setDate(x.getDate() - day);
+    return x;
+  }
+
+  function weekEnd(d = new Date()) {
+    const s = weekStart(d);
+    const e = new Date(s);
+    e.setDate(s.getDate() + 6);
+    e.setHours(23, 59, 59, 999);
+    return e;
+  }
+
+  function inThisWeek(isoOrTs) {
+    if (!isoOrTs) return false;
+    const t = typeof isoOrTs === "number" ? isoOrTs : Date.parse(isoOrTs);
+    if (!Number.isFinite(t)) return false;
+    return t >= weekStart().getTime() && t <= weekEnd().getTime();
+  }
+
+  function weekHours() {
+    let h = 0;
+    state.tasks.forEach((t) => {
+      if (inThisWeek(t.completedAt) || (!t.done && inThisWeek(t.createdAt))) h += Number(t.time_spent) || 0;
+      else if (inThisWeek(t.completedAt)) h += Number(t.time_spent) || 0;
+    });
+    // count all spent on tasks completed this week OR active with any spent (approx weekly)
+    h = 0;
+    state.tasks.forEach((t) => {
+      if (t.done && inThisWeek(t.completedAt)) h += Number(t.time_spent) || 0;
+      if (!t.done && (Number(t.time_spent) || 0) > 0) h += Number(t.time_spent) || 0;
+    });
+    state.projects.forEach((p) => { /* project hours live on tasks + project field */ });
+    return Math.round(h * 10) / 10;
+  }
+
+  function laneOf(t) {
+    if (t.done) return { id: "done", title: "已完成", color: "var(--done)" };
+    if (t.run_state === "ready") return { id: "ready", title: "处理结果", color: "#9F1239" };
+    if (t.run_state === "waiting") return { id: "waiting", title: "等待结果", color: "#3D4DB7" };
+    const s = t.score;
+    if (s >= 12) return { id: "now", title: "立刻处理", color: "var(--now)" };
+    if (s >= 9) return { id: "today", title: "今日优先", color: "var(--today)" };
+    if (s >= 6) return { id: "week", title: "本周推进", color: "var(--week)" };
+    return { id: "later", title: "可延后", color: "var(--later)" };
+  }
+
+  function isParallel(t) {
+    return !t.done && !t.run_state;
+  }
+
+  function waitingTasks() {
+    return state.tasks.filter((t) => !t.done && t.run_state === "waiting");
+  }
+
+  function readyTasks() {
+    return state.tasks.filter((t) => !t.done && t.run_state === "ready");
+  }
+
+  function toast(msg) {
+    els.toast.textContent = msg;
+    els.toast.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => els.toast.classList.remove("show"), 2200);
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function catChip(cat) {
+    const c = CATS[cat] || CATS.admin;
+    return `<span class="chip ${c.cls}">${c.label}</span>`;
+  }
+
+  function deadlineChip(d) {
+    const map = { overdue: ["hot", "已超期"], today: ["hot", "今天截止"], tomorrow: ["warn", "明天截止"], three_days: ["warn", "3天内"], this_week: ["cool", "本周"], later: ["", "更晚"] };
+    const [cls, text] = map[d] || ["", d];
+    return `<span class="chip ${cls}">${text}</span>`;
+  }
+
+  function ringSvg(pct) {
+    const r = 26, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
+    return `<div class="ring-wrap">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="${r}" fill="none" stroke="#EBEFF4" stroke-width="6"></circle>
+        <circle cx="32" cy="32" r="${r}" fill="none" stroke="#3D4DB7" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="${c}" stroke-dashoffset="${off}"></circle>
+      </svg>
+      <div class="pct">${pct}%</div>
+    </div>`;
+  }
+
+  function renderStats() {
+    const active = state.tasks.filter((t) => !t.done);
+    els.statNow.textContent = String(active.filter((t) => t.score >= 12).length);
+    els.statDeep.textContent = String(state.projects.filter((p) => p.status === "active").length);
+    els.statHours.textContent = weekHours() + "h";
+    const d = new Date();
+    const w = ["日","一","二","三","四","五","六"][d.getDay()];
+    els.statusDate.textContent = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")} 周${w}`;
+  }
+
+  function renderFilters() {
+    const items = [
+      { id: "all", label: "全部" },
+      { id: "deep", label: "仅深度" },
+      { id: "frag", label: "仅碎片" },
+      ...Object.values(CATS).map((c) => ({ id: Object.keys(CATS).find(k => CATS[k] === c), label: c.label }))
+    ];
+    // fix cat ids
+    items[3] = { id: "analysis", label: "分析/管线" };
+    const fixed = [
+      { id: "all", label: "全部" }, { id: "deep", label: "仅深度" }, { id: "frag", label: "仅碎片" },
+      { id: "analysis", label: "分析/管线" }, { id: "paper", label: "写文章" }, { id: "project", label: "写项目" },
+      { id: "literature", label: "读文献" }, { id: "meeting", label: "会议/汇报" }, { id: "admin", label: "杂务" }
+    ];
+    els.filterRow.innerHTML = fixed.map((i) => `<button type="button" class="filter-chip ${filter===i.id?"on":""}" data-filter="${i.id}">${i.label}</button>`).join("");
+  }
+
+  function matchFilter(t) {
+    if (filter === "all") return true;
+    if (filter === "deep") return isDeep(t);
+    if (filter === "frag") return !isDeep(t);
+    return t.cat === filter;
+  }
+
+  function renderBoard() {
+    renderFilters();
+    const hint = document.getElementById("parallelHint");
+    if (hint) {
+      const w = waitingTasks();
+      const r = readyTasks();
+      const p = state.tasks.filter(isParallel).sort((a,b)=>b.score-a.score);
+      if (r.length) hint.textContent = `● 结果已到 ${r.length} 项，请先处理：${r[0].title}`;
+      else if (w.length) hint.textContent = `⏳ 等待结果 ${w.length} 项 · 人可并行：${p.slice(0,3).map(t=>t.title).join(" / ") || "可整理日志、回信、读文献"}`;
+      else hint.textContent = "";
+    }
+    const visible = state.tasks.filter(matchFilter);
+    if (!state.tasks.length) {
+      els.lanes.innerHTML = `<div class="empty"><h2>还没有事项</h2><p>从调度开始，或先建一个长期项目。</p>
+        <div class="banner-actions" style="justify-content:center">
+          <button class="btn btn-primary" type="button" data-action="add-task">录入事项</button>
+          <button class="btn btn-ghost" type="button" data-action="add-project">新建项目</button>
+        </div></div>`;
+      return;
+    }
+    const groups = [
+      { id:"ready", title:"处理结果", desc:"机器已出结果，人应优先接手", color:"#9F1239", match:(t)=>!t.done&&t.run_state==="ready" },
+      { id:"waiting", title:"等待结果 · 可并行", desc:"程序在跑，人不必干等，去做下列可并行事项", color:"#3D4DB7", match:(t)=>!t.done&&t.run_state==="waiting" },
+      { id:"now", title:"立刻处理", desc:"今天必须动（人工）", color:"var(--now)", match:(t)=>!t.done&&!t.run_state&&t.score>=12 },
+      { id:"deep", title:"待深度块", desc:"分析与写作主线，放进 ≥1–2 小时", color:"var(--deep)", match:(t)=>!t.done&&!t.run_state&&isDeep(t)&&t.score<12 },
+      { id:"today", title:"今日优先", desc:"今天应推进", color:"var(--today)", match:(t)=>!t.done&&!t.run_state&&!isDeep(t)&&t.score>=9&&t.score<12 },
+      { id:"week", title:"本周推进 / 可并行", desc:"有节点；机器等待时优先排这些", color:"var(--week)", match:(t)=>!t.done&&!t.run_state&&t.score>=6&&t.score<9 },
+      { id:"later", title:"可延后", desc:"不占今天主精力", color:"var(--later)", match:(t)=>!t.done&&!t.run_state&&t.score<6 },
+      { id:"done", title:"已完成", desc:"进入回看，可写结果备注", color:"var(--done)", match:(t)=>t.done }
+    ];
+    let html = "";
+    groups.forEach((g) => {
+      const items = visible.filter(g.match).sort((a,b)=>b.score-a.score||a.createdAt-b.createdAt);
+      if (g.id==="done" && !items.length) return;
+      html += `<section class="lane"><div class="lane-head"><div class="lane-title"><span class="rail" style="background:${g.color}"></span>${g.title}</div><div class="lane-count">${items.length}</div></div>
+        <div class="lane-desc">${g.desc}</div>
+        ${items.length ? items.map((t)=>taskCard(t,g)).join("") : `<div class="empty" style="padding:14px;box-shadow:none"><p style="margin:0">这一档暂时为空</p></div>`}</section>`;
+    });
+    els.lanes.innerHTML = html;
+  }
+
+  function taskCard(t, g) {
+    const proj = state.projects.find((p) => p.id === t.project_id);
+    return `<article class="task ${t.done?"done":""}" style="--lane-color:${g.color}" data-id="${t.id}">
+      <div class="task-top">
+        <div class="task-name">${esc(t.title)}</div>
+        <button class="task-check" type="button" data-action="toggle" data-id="${t.id}" aria-label="完成切换">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.2L5.4 10.1L11.5 3.9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="task-meta">
+        ${catChip(t.cat)}
+        <span class="chip ${isDeep(t)?"deep":""}">${isDeep(t)?"深度":"碎片"}</span>
+        ${deadlineChip(t.deadline)}
+        <span class="chip score">分 ${t.score}</span>
+        <span class="chip">工时 ${t.time_spent}h / ${t.time_planned}h</span>
+        ${t.run_state==="waiting" ? `<span class="chip deep">⏳ 机器运行中</span>` : ""}
+        ${t.run_state==="ready" ? `<span class="chip hot">待处理结果</span>` : ""}
+        ${t.wait_note ? `<span class="chip cool">${esc(t.wait_note).slice(0,16)}</span>` : ""}
+        ${proj ? `<span class="chip cool">项目：${esc(proj.title).slice(0,10)}</span>` : ""}
+        ${t.blocker ? `<span class="chip block">阻塞：${esc(t.blocker).slice(0,12)}</span>` : ""}
+      </div>
+      <div class="progress-line"><div class="bar"><i style="width:${t.done?100:t.progress}%"></i></div>
+        <div class="bar-text">进度 ${t.done?100:t.progress}%${t.result_note?" · "+esc(t.result_note):""}</div></div>
+      ${!t.done ? `<div class="time-row">
+        ${t.run_state==="waiting" ? `
+          <button class="btn btn-soft btn-mini" type="button" data-action="run" data-id="${t.id}" data-rs="ready">结果已到</button>
+          <button class="btn btn-ghost btn-mini" type="button" data-action="run" data-id="${t.id}" data-rs="">取消等待</button>
+        ` : t.run_state==="ready" ? `
+          <button class="btn btn-primary btn-mini" type="button" data-action="toggle" data-id="${t.id}">处理完成</button>
+          <button class="btn btn-ghost btn-mini" type="button" data-action="run" data-id="${t.id}" data-rs="">仍需跟进</button>
+        ` : `
+          <button class="btn btn-soft btn-mini" type="button" data-action="run" data-id="${t.id}" data-rs="waiting">提交等待</button>
+          <button class="btn btn-ghost btn-mini" type="button" data-action="time" data-id="${t.id}" data-h="0.25">+15分</button>
+          <button class="btn btn-ghost btn-mini" type="button" data-action="time" data-id="${t.id}" data-h="0.5">+30分</button>
+          <button class="btn btn-ghost btn-mini" type="button" data-action="time" data-id="${t.id}" data-h="1">+1h</button>
+          <button class="btn btn-ghost btn-mini" type="button" data-action="prog" data-id="${t.id}">改进度</button>
+        `}
+      </div>` : ""}
+      <div class="task-actions">
+        <button class="btn btn-ghost btn-mini" type="button" data-action="edit-task" data-id="${t.id}">编辑</button>
+        ${!t.done && proj && nextMilestone(proj) ? `<button class="btn btn-soft btn-mini" type="button" data-action="from-project" data-project="${proj.id}">看项目下一步</button>` : ""}
+        <button class="btn btn-danger-ghost btn-mini" type="button" data-action="del" data-id="${t.id}">删除</button>
+      </div>
+    </article>`;
+  }
+
+  function renderProjects() {
+    els.rules.innerHTML = RULES.map((r)=>`<article class="panel"><h3>${r.h}</h3><p>${r.p}</p></article>`).join("");
+    const list = state.projects;
+    if (!list.length) {
+      els.projectList.innerHTML = `<div class="empty"><h2>还没有长期项目</h2><p>论文、课题、基金、平台迭代都适合建成项目，用里程碑推进。</p>
+        <button class="btn btn-primary" type="button" data-action="add-project">新建项目</button></div>`;
+      return;
+    }
+    els.projectList.innerHTML = list.map((p) => projectCard(p)).join("");
+  }
+
+  function projectCard(p) {
+    const pct = projProgress(p);
+    const doneN = p.milestones.filter((m)=>m.milestones || m.done).length;
+    const doneC = p.milestones.filter((m)=>m.done).length;
+    const next = nextMilestone(p);
+    return `<article class="proj-card" data-project="${p.id}">
+      <div class="proj-top">
+        ${ringSvg(pct)}
+        <div style="flex:1;min-width:0">
+          <div class="proj-title">${esc(p.title)}</div>
+          <div class="proj-meta">
+            ${catChip(p.cat)}
+            ${deadlineChip(p.deadline)}
+            ${p.deadline_date ? `<span class="chip">目标日 ${esc(p.deadline_date)}</span>` : ""}
+            <span class="chip deep">里程碑 ${doneC}/${p.milestones.length}</span>
+            <span class="chip">工时 ${p.time_spent_hours}h / ${p.time_planned_hours}h</span>
+            ${p.status==="done" ? `<span class="chip cool">已归档</span>` : ""}
+          </div>
+          ${p.blocker ? `<div class="proj-meta"><span class="chip block">阻塞：${esc(p.blocker)}</span></div>` : ""}
+        </div>
+      </div>
+      ${next ? `<div class="panel" style="margin-top:10px;box-shadow:none;background:var(--deep-bg);border-color:#D5DAF5">
+        <h3 style="color:var(--deep)">下一步</h3>
+        <p>${esc(next.title)}${next.deadline?` · 截止 ${esc(next.deadline)}`:""}</p>
+      </div>` : `<div class="panel" style="margin-top:10px;box-shadow:none"><p>全部里程碑已完成，可写总结并归档。</p></div>`}
+      <div class="ms-list">
+        ${p.milestones.map((m)=>`<div class="ms-item ${m.done?"done":""}">
+          <button class="ms-btn" type="button" data-action="ms" data-project="${p.id}" data-ms="${m.id}" aria-label="切换里程碑">✓</button>
+          <div style="flex:1">${esc(m.title)}</div>
+          ${m.done ? `<div class="ms-next">${esc((m.doneAt||"").slice(0,10))}</div>` : (m.deadline?`<div class="ms-next">${esc(m.deadline)}</div>`:"")}
+        </div>`).join("")}
+      </div>
+      <div class="task-actions">
+        <button class="btn btn-soft btn-mini" type="button" data-action="time-proj" data-project="${p.id}" data-h="0.5">项目+30分</button>
+        <button class="btn btn-soft btn-mini" type="button" data-action="time-proj" data-project="${p.id}" data-h="1">项目+1h</button>
+        <button class="btn btn-ghost btn-mini" type="button" data-action="task-from-project" data-project="${p.id}">生成今日事项</button>
+        <button class="btn btn-ghost btn-mini" type="button" data-action="edit-project" data-project="${p.id}">编辑</button>
+        <button class="btn btn-danger-ghost btn-mini" type="button" data-action="archive-project" data-project="${p.id}">归档项目</button>
+      </div>
+    </article>`;
+  }
+
+  function renderReview() {
+    const doneTasks = state.tasks.filter((t)=>t.done).sort((a,b)=>String(b.completedAt||"").localeCompare(String(a.completedAt||"")));
+    const doneProjects = state.projects.filter((p)=>p.status==="done");
+    if (!doneTasks.length && !doneProjects.length) {
+      els.archiveList.innerHTML = `<div class="empty"><p style="margin:0">完成事项或归档项目后，会出现在这里。</p></div>`;
+    } else {
+      const items = [];
+      doneTasks.forEach((t) => {
+        items.push({
+          date: t.completedAt || "",
+          title: t.title,
+          note: `${CATS[t.cat]?.label || t.cat} · 工时 ${t.time_spent}h${t.result_note ? " · " + t.result_note : ""}${t.project_id ? " · 项目关联" : ""}`,
+          kind: "事项"
+        });
+      });
+      doneProjects.forEach((p) => {
+        items.push({
+          date: p.completedAt || "",
+          title: p.title,
+          note: `项目归档 · ${p.milestones.filter(m=>m.done).length}/${p.milestones.length} 里程碑 · 投入 ${p.time_spent_hours}h${p.summary ? " · " + p.summary : ""}`,
+          kind: "项目"
+        });
+      });
+      items.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+      els.archiveList.innerHTML = items.map((it)=>`<article class="tl-item">
+        <div class="tl-date">${esc((it.date||"未标注时间").toString().slice(0,16).replace("T"," "))} · ${it.kind}</div>
+        <div class="tl-title">${esc(it.title)}</div>
+        <div class="tl-note">${esc(it.note)}</div>
+      </article>`).join("");
+    }
+  }
+
+  function buildWeeklySummary() {
+    const ws = weekStart(), we = weekEnd();
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const doneThisWeek = state.tasks.filter((t)=>t.done && inThisWeek(t.completedAt));
+    const activeTasks = state.tasks.filter((t)=>!t.done).sort((a,b)=>b.score-a.score);
+    const activeProjects = state.projects.filter((p)=>p.status==="active");
+    const blockers = [];
+    activeTasks.forEach((t)=>{ if (t.blocker) blockers.push(`${t.title}：${t.blocker}`); });
+    activeProjects.forEach((p)=>{ if (p.blocker) blockers.push(`${p.title}：${p.blocker}`); });
+    const hours = weekHours();
+    const lines = [];
+    lines.push(`# 时序周报草稿 · ${fmt(ws)} ~ ${fmt(we)}`);
+    lines.push("");
+    lines.push(`> 本周记录投入约 ${hours}h（按事项已记工时汇总，项目工时可另计）。`);
+    lines.push("");
+    lines.push("## 一、本周已完成");
+    if (!doneThisWeek.length) lines.push("- （本周暂无勾选完成的事项）");
+    else doneThisWeek.forEach((t) => {
+      lines.push(`- [${fmt(new Date(t.completedAt))}] ${t.title}（${CATS[t.cat]?.label||t.cat}，投入 ${t.time_spent}h）${t.result_note?"  \n  结果："+t.result_note:""}`);
+    });
+    lines.push("");
+    lines.push("## 二、进行中项目进度");
+    if (!activeProjects.length) lines.push("- （无进行中项目）");
+    else activeProjects.forEach((p) => {
+      const pct = projProgress(p);
+      const next = nextMilestone(p);
+      lines.push(`- **${p.title}**：里程碑 ${p.milestones.filter(m=>m.done).length}/${p.milestones.length}（${pct}%），工时 ${p.time_spent_hours}h/${p.time_planned_hours}h${p.deadline_date?"，目标日 "+p.deadline_date:""}`);
+      if (next) lines.push(`  - 下一步：${next.title}${next.deadline?"（"+next.deadline+"）":""}`);
+      if (p.blocker) lines.push(`  - 阻塞：${p.blocker}`);
+    });
+    lines.push("");
+    lines.push("## 三、下周建议重点");
+    const focus = activeTasks.filter((t)=>t.score>=9).slice(0,3);
+    if (!focus.length) lines.push("- 重新规划：当前没有高优先级事项，补录项目下一步。");
+    else focus.forEach((t) => lines.push(`- ${t.title}（分 ${t.score}，${CATS[t.cat]?.label||t.cat}${t.project_id?"，隶属项目":""}）`));
+    activeProjects.slice(0,2).forEach((p) => {
+      const next = nextMilestone(p);
+      if (next) lines.push(`- 项目推进：${p.title} → ${next.title}`);
+    });
+    lines.push("");
+    lines.push("## 四、阻塞与需协调");
+    if (!blockers.length) lines.push("- 无记录阻塞");
+    else blockers.forEach((b) => lines.push(`- ${b}`));
+    lines.push("");
+    lines.push("## 五、可写进材料的产出提示");
+    const withNotes = doneThisWeek.filter((t)=>t.result_note);
+    if (!withNotes.length) lines.push("- 完成事项时尽量补一句结果备注，周报会自动汇总到这里。");
+    else withNotes.forEach((t) => lines.push(`- ${t.title}：${t.result_note}`));
+    return lines.join("\n");
+  }
+
+  function render() {
+    renderStats();
+    document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.getAttribute("data-tab")===tab));
+    $("view-board").hidden = tab !== "board";
+    $("view-projects").hidden = tab !== "projects";
+    $("view-review").hidden = tab !== "review";
+    if (tab === "board") renderBoard();
+    if (tab === "projects") renderProjects();
+    if (tab === "review") renderReview();
+  }
+
+  /* forms */
+  function openSheet(html) {
+    els.formBody.innerHTML = html;
+    els.formSheet.classList.add("open");
+  }
+  function closeSheet() {
+    els.formSheet.classList.remove("open");
+    formMode = null;
+  }
+
+  function openTaskForm(taskId) {
+    const t = taskId ? state.tasks.find((x)=>x.id===taskId) : null;
+    formMode = { type: "task", id: taskId || null };
+    const projOpts = [`<option value="">（不关联项目）</option>`].concat(state.projects.map((p)=>`<option value="${p.id}" ${t&&t.project_id===p.id?"selected":""}>${esc(p.title)}</option>`)).join("");
+    openSheet(`
+      <div class="wizard-step-label">${t?"编辑事项":"录入事项"}</div>
+      <div class="wizard-q">${t?"修改事项":"这是一件什么事？"}</div>
+      <div class="wizard-hint">可关联长期项目；碎片/深度由类型自动判断，可再改进度与工时。</div>
+      <div class="field"><label>名称</label><input id="f_title" value="${esc(t?t.title:"")}" placeholder="例如：完成 DMR 关联主图" /></div>
+      <div class="field"><label>类型</label><select id="f_cat">${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${t&&t.cat===k?"selected":(!t&&k==="analysis"?"selected":"")}>${v.label}</option>`).join("")}</select></div>
+      <div class="field"><label>关联项目</label><select id="f_proj">${projOpts}</select></div>
+      <div class="field"><label>截止</label><select id="f_dl">${Object.entries(DEADLINES).map(([k,v])=>`<option value="${k}" ${t&&t.deadline===k?"selected":(!t&&k==="today"?"selected":"")}>${v.label}</option>`).join("")}</select></div>
+      <div class="field"><label>延期后果</label><select id="f_impact">${Object.entries(IMPACTS).map(([k,v])=>`<option value="${k}" ${t&&t.impact===k?"selected":(!t&&k==="mild"?"selected":"")}>${v.label}</option>`).join("")}</select></div>
+      <div class="field"><label>连续时间需求</label><select id="f_effort">${Object.entries(EFFORTS).map(([k,v])=>`<option value="${k}" ${t&&t.effort===k?"selected":(!t&&k==="h1"?"selected":"")}>${v.label}</option>`).join("")}</select></div>
+      <div class="field"><label>灵活性</label><select id="f_flex">${Object.entries(FLEX).map(([k,v])=>`<option value="${k}" ${t&&t.flex===k?"selected":(!t&&k==="only_me"?"selected":"")}>${v.label}</option>`).join("")}</select></div>
+      <div class="field"><label>工作方式</label><select id="f_focus">
+        <option value="auto" ${t&&!t.focus?"selected":""}>按类型自动</option>
+        <option value="deep" ${t&&t.focus==="deep"?"selected":""}>深度</option>
+        <option value="shallow" ${t&&t.focus==="shallow"?"selected":""}>碎片可做</option>
+      </select></div>
+      <div class="field"><label>计划小时</label><input id="f_tplan" type="number" min="0" step="0.25" value="${t?t.time_planned:1}" /></div>
+      <div class="field"><label>进度 %（0-100）</label><input id="f_prog" type="number" min="0" max="100" step="5" value="${t?(t.done?100:t.progress):0}" /></div>
+      <div class="field"><label>阻塞（可选）</label><input id="f_block" value="${esc(t?t.blocker:"")}" placeholder="等数据 / 等人 / 等审批…" /></div>
+      <div class="field"><label>运行状态（分析类适用）</label><select id="f_run">
+        <option value="" ${t&&!t.run_state?"selected":""}>未运行 / 人工推进</option>
+        <option value="waiting" ${t&&t.run_state==="waiting"?"selected":""}>等待结果（程序在跑，可并行）</option>
+        <option value="ready" ${t&&t.run_state==="ready"?"selected":""}>结果已到，待处理</option>
+      </select></div>
+      <div class="field"><label>等待备注（作业号/路径等）</label><input id="f_wait" value="${esc(t?t.wait_note:"")}" placeholder="例如：server job 3821 / DMR 运行中" /></div>
+      <div class="field"><label>结果备注（完成时很有用）</label><textarea id="f_note">${esc(t?t.result_note:"")}</textarea></div>
+      <div class="wizard-nav">
+        <button class="btn btn-ghost" type="button" data-form="cancel">取消</button>
+        <button class="btn btn-primary" type="button" data-form="save-task">${t?"保存":"加入调度"}</button>
+      </div>
+    `);
+  }
+
+  function openProjectForm(projectId) {
+    const p = projectId ? state.projects.find((x)=>x.id===projectId) : null;
+    formMode = { type: "project", id: projectId || null };
+    const msText = p ? p.milestones.map((m)=>m.title).join("\n") : "数据/材料就绪\n核心结果/初稿\n图表与方法\n讨论或润色\n提交/交付";
+    openSheet(`
+      <div class="wizard-step-label">${p?"编辑项目":"新建长期项目"}</div>
+      <div class="wizard-q">长期工作怎么拆？</div>
+      <div class="wizard-hint">每行一个里程碑。进度 = 已完成/总里程碑。可填计划工时与目标日。</div>
+      <div class="field"><label>项目名称</label><input id="p_title" value="${esc(p?p.title:"")}" placeholder="例如：小麦 sRNA 论文" /></div>
+      <div class="field"><label>类型</label><select id="p_cat">${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${p&&p.cat===k?"selected":(!p&&k==="paper"?"selected":"")}>${v.label}</option>`).join("")}</select></div>
+      <div class="field"><label>截止档位</label><select id="p_dl">${Object.entries(DEADLINES).map(([k,v])=>`<option value="${k}" ${p&&p.deadline===k?"selected":(!p&&k==="this_week"?"selected":"")}>${v.label}</option>`).join("")}</select></div>
+      <div class="field"><label>目标日期（可选）</label><input id="p_date" value="${esc(p?p.deadline_date:"")}" placeholder="2026-10-20" /></div>
+      <div class="field"><label>计划工时（小时）</label><input id="p_plan" type="number" min="0" step="0.5" value="${p?p.time_planned_hours:20}" /></div>
+      <div class="field"><label>已投入工时</label><input id="p_spent" type="number" min="0" step="0.25" value="${p?p.time_spent_hours:0}" /></div>
+      <div class="field"><label>当前阻塞</label><input id="p_block" value="${esc(p?p.blocker:"")}" /></div>
+      <div class="field"><label>里程碑（每行一个）</label><textarea id="p_ms" rows="6">${esc(msText)}</textarea></div>
+      <div class="wizard-nav">
+        <button class="btn btn-ghost" type="button" data-form="cancel">取消</button>
+        <button class="btn btn-primary" type="button" data-form="save-project">${p?"保存项目":"创建项目"}</button>
+      </div>
+    `);
+  }
+
+  function openProgressForm(taskId) {
+    const t = state.tasks.find((x)=>x.id===taskId);
+    if (!t) return;
+    formMode = { type: "prog", id: taskId };
+    openSheet(`
+      <div class="wizard-step-label">进度</div>
+      <div class="wizard-q">${esc(t.title)}</div>
+      <div class="wizard-hint">填 0–100。完成可直接点 100 并写结果备注。</div>
+      <div class="field"><label>进度 %</label><input id="f_prog2" type="number" min="0" max="100" value="${t.done?100:t.progress}" /></div>
+      <div class="field"><label>结果备注</label><textarea id="f_note2">${esc(t.result_note)}</textarea></div>
+      <div class="wizard-nav">
+        <button class="btn btn-ghost" type="button" data-form="cancel">取消</button>
+        <button class="btn btn-primary" type="button" data-form="save-prog">保存</button>
+      </div>
+    `);
+  }
+
+  function saveTaskFromForm() {
+    const title = $("f_title").value.trim();
+    if (!title) { toast("请填写事项名称"); return; }
+    const focusSel = $("f_focus").value;
+    const cat = $("f_cat").value;
+    const payload = {
+      title,
+      cat,
+      project_id: $("f_proj").value || null,
+      deadline: $("f_dl").value,
+      impact: $("f_impact").value,
+      effort: $("f_effort").value,
+      flex: $("f_flex").value,
+      focus: focusSel === "auto" ? (CATS[cat].deep ? "deep" : "shallow") : focusSel,
+      time_planned: Number($("f_tplan").value) || 0,
+      progress: Number($("f_prog").value) || 0,
+      blocker: $("f_block").value.trim(),
+      run_state: ["waiting","ready"].includes($("f_run")?.value) ? $("f_run").value : "",
+      wait_note: $("f_wait") ? $("f_wait").value.trim() : "",
+      result_note: $("f_note").value.trim()
+    };
+    payload.score = computeScore(payload);
+    if (payload.progress >= 100) {
+      payload.done = true;
+      payload.completedAt = new Date().toISOString();
+      payload.run_state = "";
+    } else {
+      payload.done = false;
+      payload.completedAt = null;
+    }
+    if (formMode && formMode.id) {
+      const idx = state.tasks.findIndex((t)=>t.id===formMode.id);
+      if (idx >= 0) state.tasks[idx] = normalizeTask({ ...state.tasks[idx], ...payload });
+    } else {
+      state.tasks.unshift(normalizeTask({ ...payload, id: uid("t"), createdAt: Date.now(), time_spent: 0 }));
+    }
+    saveState(true); closeSheet(); render(); toast("事项已保存");
+  }
+
+  function saveProjectFromForm() {
+    const title = $("p_title").value.trim();
+    if (!title) { toast("请填写项目名称"); return; }
+    const msTitles = $("p_ms").value.split(/\r?\n/).map((s)=>s.trim()).filter(Boolean);
+    const old = formMode && formMode.id ? state.projects.find((p)=>p.id===formMode.id) : null;
+    const milestones = msTitles.map((title, i) => {
+      const prev = old && old.milestones[i] && old.milestones[i].title === title ? old.milestones[i] : null;
+      return prev || { id: "m"+(i+1), title, done: false, doneAt: null, deadline: "" };
+    });
+    const payload = {
+      id: formMode && formMode.id ? formMode.id : uid("p"),
+      title,
+      cat: $("p_cat").value,
+      deadline: $("p_dl").value,
+      deadline_date: $("p_date").value.trim(),
+      status: old ? old.status : "active",
+      time_planned_hours: Number($("p_plan").value) || 0,
+      time_spent_hours: Number($("p_spent").value) || 0,
+      blocker: $("p_block").value.trim(),
+      summary: old ? old.summary : "",
+      createdAt: old ? old.createdAt : Date.now(),
+      completedAt: old ? old.completedAt : null,
+      milestones
+    };
+    if (old) {
+      state.projects = state.projects.map((p)=>p.id===old.id ? normalizeProject(payload) : p);
+    } else {
+      state.projects.unshift(normalizeProject(payload));
+    }
+    saveState(true); closeSheet(); tab = "projects"; render(); toast("项目已保存");
+  }
+
+  /* desktop sync: Electron IPC 优先，浏览器模式回退 localStorage */
+  function setDeskStatus(ok, text) {
+    els.deskStatus.textContent = (ok?"● ":"○ ") + text;
+    els.deskStatus.style.color = ok ? "var(--week)" : "var(--muted)";
+  }
+
+  function applyExternalState(data) {
+    if (!data || !Array.isArray(data.tasks)) return false;
+    state = normalizeState({ ...data, summaries: data.summaries || state.summaries || [] });
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (_) {}
+    return true;
+  }
+
+  async function pullFromDesktop(notify) {
+    if (window.shixu) {
+      try {
+        const data = await window.shixu.load();
+        applyExternalState(data);
+        setDeskStatus(true, "桌面应用 · 数据自动同步");
+        render();
+        if (notify) toast("已刷新应用数据");
+        return true;
+      } catch (_) {}
+    }
+    try {
+      const res = await fetch(DESK_API + "/tasks", { cache: "no-store" });
+      if (!res.ok) throw new Error("bad");
+      const data = await res.json();
+      if (!Array.isArray(data.tasks)) throw new Error("bad shape");
+      if (!Array.isArray(data.projects)) data.projects = [];
+      applyExternalState(data);
+      setDeskStatus(true, "已连接本机悬浮窗 · 双向同步");
+      render();
+      if (notify) toast("已从桌面刷新");
+      return true;
+    } catch (_) {
+      if (window.shixu) {
+        setDeskStatus(true, "桌面应用 · 数据在本机用户目录");
+        return true;
+      }
+      setDeskStatus(false, "未检测到桌面悬浮窗（个人版可先运行 启动时序助手.bat）");
+      return false;
+    }
+  }
+
+  async function pushToDesktop(notify) {
+    if (window.shixu) {
+      try {
+        const data = await window.shixu.save(state);
+        if (data) applyExternalState(data);
+        setDeskStatus(true, "桌面应用 · 数据自动同步");
+        if (notify) toast("已保存到桌面应用");
+        return true;
+      } catch (_) {
+        setDeskStatus(false, "保存失败，请检查磁盘权限");
+        return false;
+      }
+    }
+    try {
+      const res = await fetch(DESK_API + "/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state)
+      });
+      if (!res.ok) throw new Error("bad");
+      setDeskStatus(true, "已连接本机悬浮窗 · 双向同步");
+      if (notify) toast("已写入桌面悬浮窗");
+      return true;
+    } catch (_) {
+      setDeskStatus(false, "未检测到桌面悬浮窗；数据仍在浏览器本地");
+      if (notify) toast("桌面端未运行，数据在浏览器本地保留");
+      return false;
+    }
+  }
+
+  function download(filename, content, type="text/plain") {
+    const blob = new Blob([content], { type: type + ";charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* events */
+  document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => {
+    tab = btn.getAttribute("data-tab");
+    render();
+  }));
+  $("btnAddTask").addEventListener("click", () => openTaskForm(null));
+  $("btnAddProject").addEventListener("click", () => openProjectForm(null));
+  $("btnAddProject2").addEventListener("click", () => openProjectForm(null));
+  $("btnSyncDesk").addEventListener("click", async () => { if (!(await pullFromDesktop(true))) await pushToDesktop(true); });
+  $("btnSyncDesk2").addEventListener("click", async () => { if (!(await pullFromDesktop(true))) await pushToDesktop(true); });
+  $("btnGenSummary").addEventListener("click", () => {
+    const text = buildWeeklySummary();
+    els.summaryOut.textContent = text;
+    state.summaries = [{ id: uid("s"), createdAt: Date.now(), text }].concat(state.summaries).slice(0, 20);
+    saveState(true);
+    toast("已生成本周总结草稿");
+  });
+  $("btnExportSummary").addEventListener("click", () => {
+    const text = els.summaryOut.textContent && !els.summaryOut.textContent.startsWith("点「") ? els.summaryOut.textContent : buildWeeklySummary();
+    const d = new Date();
+    const name = `周报-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.md`;
+    download(name, text, "text/markdown");
+    toast("已导出 Markdown");
+  });
+  $("btnExportAll").addEventListener("click", async () => {
+    if (window.shixu && window.shixu.exportData) {
+      const ret = await window.shixu.exportData(state);
+      if (ret && ret.ok) toast("已导出：" + ret.filePath);
+      else if (ret && ret.canceled) toast("已取消导出");
+      else toast("导出失败");
+      return;
+    }
+    download("shixu-data.json", JSON.stringify(state, null, 2), "application/json");
+    toast("已导出全部数据");
+  });
+  $("btnExportDesk") && $("btnExportDesk").addEventListener("click", async () => {
+    if (!window.shixu || !window.shixu.exportData) { toast("请在桌面应用中使用"); return; }
+    const ret = await window.shixu.exportData(state);
+    if (ret && ret.ok) toast("已导出：" + ret.filePath);
+    else if (ret && ret.canceled) toast("已取消导出");
+    else toast("导出失败");
+  });
+
+  async function importFromFileInput(file) {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || !Array.isArray(data.tasks)) throw new Error("缺少 tasks");
+    state = normalizeState(data);
+    saveState(true);
+    render();
+  }
+
+  async function doImportDesk() {
+    if (!window.shixu || !window.shixu.importData) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "application/json,.json";
+      input.onchange = async () => {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        try {
+          await importFromFileInput(f);
+          toast("已导入数据");
+        } catch (err) {
+          toast("导入失败：" + (err.message || err));
+        }
+      };
+      input.click();
+      return;
+    }
+    const ret = await window.shixu.importData();
+    if (ret && ret.ok) {
+      applyExternalState(ret.data);
+      render();
+      toast(`已导入 ${ret.taskCount || 0} 条事项`);
+    } else if (ret && ret.canceled) {
+      toast("已取消导入");
+    } else {
+      toast("导入失败：" + ((ret && ret.error) || "文件无效"));
+    }
+  }
+
+  $("btnImportDesk") && $("btnImportDesk").addEventListener("click", doImportDesk);
+  $("btnImportAll") && $("btnImportAll").addEventListener("click", doImportDesk);
+
+  async function refreshAutoStartLabel() {
+    const btn = $("btnAutoStart");
+    if (!btn) return;
+    if (!window.shixu || !window.shixu.getAutoStart) {
+      btn.textContent = "开机自启：仅桌面版";
+      btn.disabled = true;
+      return;
+    }
+    try {
+      const info = await window.shixu.getAutoStart();
+      const on = !!(info && info.openAtLogin);
+      btn.textContent = on ? "开机自启：开" : "开机自启：关";
+      btn.dataset.on = on ? "1" : "0";
+    } catch (_) {
+      btn.textContent = "开机自启：未知";
+    }
+  }
+
+  $("btnAutoStart") && $("btnAutoStart").addEventListener("click", async () => {
+    const btn = $("btnAutoStart");
+    if (!window.shixu || !window.shixu.setAutoStart) return;
+    const next = !(btn.dataset.on === "1");
+    try {
+      const info = await window.shixu.setAutoStart(next);
+      const on = !!(info && info.openAtLogin);
+      btn.dataset.on = on ? "1" : "0";
+      btn.textContent = on ? "开机自启：开" : "开机自启：关";
+      toast(on ? "已开启开机自启" : "已关闭开机自启");
+    } catch (err) {
+      toast("设置失败：" + (err.message || err));
+    }
+  });
+
+  $("btnRevealData") && $("btnRevealData").addEventListener("click", async () => {
+    if (!window.shixu || !window.shixu.revealData) { toast("数据在浏览器本地"); return; }
+    const ret = await window.shixu.revealData();
+    toast(ret && ret.path ? "数据文件：" + ret.path : "已打开数据位置");
+  });
+
+  if (window.shixu) {
+    refreshAutoStartLabel();
+    if (window.shixu.onMenuExport) window.shixu.onMenuExport(async () => {
+      const ret = await window.shixu.exportData(state);
+      if (ret && ret.ok) toast("已导出：" + ret.filePath);
+    });
+    if (window.shixu.onMenuImport) window.shixu.onMenuImport(doImportDesk);
+  } else {
+    refreshAutoStartLabel();
+  }
+
+  $("btnHelp").addEventListener("click", () => els.helpSheet.classList.add("open"));
+  $("btnCloseHelp").addEventListener("click", () => els.helpSheet.classList.remove("open"));
+  $("helpBackdrop").addEventListener("click", () => els.helpSheet.classList.remove("open"));
+  $("btnHelpSync").addEventListener("click", async () => { if (!(await pullFromDesktop(true))) await pushToDesktop(true); });
+  $("formBackdrop").addEventListener("click", closeSheet);
+  $("btnFab").addEventListener("click", () => {
+    openSheet(`
+      <div class="wizard-step-label">QUICK</div>
+      <div class="wizard-q">快速操作</div>
+      <div class="wizard-hint">调度事项、长期项目、周报三件事分开管。</div>
+      <div class="choices">
+        <button class="choice" type="button" data-quick="task"><strong>录入今日事项</strong><span>进调度跑道，可关联项目</span></button>
+        <button class="choice" type="button" data-quick="project"><strong>新建长期项目</strong><span>里程碑 + 进度环 + 工时</span></button>
+        <button class="choice" type="button" data-quick="summary"><strong>生成本周总结</strong><span>完成情况 / 项目进度 / 阻塞</span></button>
+        <button class="choice" type="button" data-quick="sync"><strong>与桌面悬浮窗同步</strong><span>本地 127.0.0.1:8790</span></button>
+      </div>
+      <div class="wizard-nav" style="grid-template-columns:1fr"><button class="btn btn-ghost" type="button" data-form="cancel">关闭</button></div>
+    `);
+  });
+
+  els.filterRow.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-filter]");
+    if (!b) return;
+    filter = b.getAttribute("data-filter");
+    render();
+  });
+
+  els.formBody.addEventListener("click", async (e) => {
+    const q = e.target.closest("[data-quick]");
+    if (q) {
+      const k = q.getAttribute("data-quick");
+      closeSheet();
+      if (k==="task") openTaskForm(null);
+      if (k==="project") openProjectForm(null);
+      if (k==="summary") { tab="review"; render(); $("btnGenSummary").click(); }
+      if (k==="sync") { if (!(await pullFromDesktop(true))) await pushToDesktop(true); }
+      return;
+    }
+    const f = e.target.closest("[data-form]");
+    if (!f) return;
+    const k = f.getAttribute("data-form");
+    if (k==="cancel") closeSheet();
+    if (k==="save-task") saveTaskFromForm();
+    if (k==="save-project") saveProjectFromForm();
+    if (k==="save-prog") {
+      const t = state.tasks.find((x)=>x.id===formMode.id);
+      if (t) {
+        t.progress = Math.max(0, Math.min(100, Number($("f_prog2").value)||0));
+        t.result_note = $("f_note2").value.trim();
+        if (t.progress >= 100) { t.done = true; t.completedAt = t.completedAt || new Date().toISOString(); }
+        else { t.done = false; t.completedAt = null; }
+        t.score = computeScore(t);
+      }
+      saveState(true); closeSheet(); render(); toast("进度已更新");
+    }
+  });
+
+  function onLanesClick(e) {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id");
+    if (action==="add-task") openTaskForm(null);
+    if (action==="add-project") openProjectForm(null);
+    if (action==="edit-task") openTaskForm(id);
+    if (action==="prog") openProgressForm(id);
+    if (action==="del") {
+      state.tasks = state.tasks.filter((t)=>t.id!==id);
+      saveState(true); render(); toast("已删除");
+    }
+    if (action==="toggle") {
+      const t = state.tasks.find((x)=>x.id===id);
+      if (!t) return;
+      t.done = !t.done;
+      t.progress = t.done ? 100 : Math.min(t.progress, 90);
+      t.completedAt = t.done ? (t.completedAt || new Date().toISOString()) : null;
+      if (t.done && !t.result_note) t.result_note = t.result_note || "";
+      saveState(true); render();
+      toast(t.done ? "已完成，可到「回看」补结果备注" : "已重新打开");
+    }
+    if (action==="run") {
+      const t = state.tasks.find((x)=>x.id===id);
+      if (!t) return;
+      const rs = btn.getAttribute("data-rs") || "";
+      t.run_state = ["waiting","ready"].includes(rs) ? rs : "";
+      if (t.run_state === "waiting") {
+        t.wait_started_at = new Date().toISOString();
+        t.done = false;
+        toast("已提交等待：程序在跑，人可去做可并行事项");
+      } else if (t.run_state === "ready") {
+        toast("结果已到，请优先处理这一条");
+      } else {
+        t.wait_started_at = null;
+        toast("已退出等待状态");
+      }
+      saveState(true); render();
+    }
+    if (action==="time") {
+      const t = state.tasks.find((x)=>x.id===id);
+      if (!t) return;
+      t.time_spent = Math.round(((Number(t.time_spent)||0) + Number(btn.getAttribute("data-h"))) * 100) / 100;
+      saveState(true); render(); toast(`已记 +${btn.getAttribute("data-h")}h · 合计 ${t.time_spent}h`);
+    }
+    if (action==="from-project" || action==="task-from-project") {
+      const pid = btn.getAttribute("data-project");
+      const p = state.projects.find((x)=>x.id===pid);
+      if (!p) return;
+      const next = nextMilestone(p);
+      if (!next) { toast("该项目里程碑已全部完成"); return; }
+      if (action==="from-project") { tab="projects"; render(); return; }
+      const payload = {
+        title: `【${p.title}】${next.title}`,
+        cat: p.cat,
+        project_id: p.id,
+        deadline: next.deadline || p.deadline || "this_week",
+        impact: "severe",
+        effort: "h2",
+        flex: "only_me",
+        focus: CATS[p.cat].deep ? "deep" : "shallow",
+        progress: 0,
+        time_planned: 2,
+        time_spent: 0,
+        blocker: p.blocker || "",
+        result_note: "",
+        id: uid("t"),
+        createdAt: Date.now(),
+        done: false,
+        completedAt: null
+      };
+      payload.score = computeScore(payload);
+      state.tasks.unshift(normalizeTask(payload));
+      saveState(true); tab="board"; render(); toast("已从项目下一步生成今日事项");
+    }
+  }
+
+  function onProjectsClick(e) {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    const action = btn.getAttribute("data-action");
+    const pid = btn.getAttribute("data-project");
+    const p = state.projects.find((x)=>x.id===pid);
+    if (!p) return;
+
+    if (action==="add-project") openProjectForm(null);
+    if (action==="edit-project") openProjectForm(pid);
+    if (action==="ms") {
+      const mid = btn.getAttribute("data-ms");
+      const m = p.milestones.find((x)=>x.id===mid);
+      if (!m) return;
+      m.done = !m.done;
+      m.doneAt = m.done ? new Date().toISOString().slice(0,10) : null;
+      if (p.milestones.length && p.milestones.every((x)=>x.done) && !p.summary) {
+        // keep active until user archives
+      }
+      saveState(true); render();
+      toast(m.done ? `完成里程碑：${m.title}` : `已取消完成：${m.title}`);
+    }
+    if (action==="time-proj") {
+      const h = Number(btn.getAttribute("data-h"))||0;
+      p.time_spent_hours = Math.round(((Number(p.time_spent_hours)||0)+h)*100)/100;
+      saveState(true); render(); toast(`项目工时 +${h}h · 合计 ${p.time_spent_hours}h`);
+    }
+    if (action==="task-from-project") {
+      const next = nextMilestone(p);
+      if (!next) { toast("里程碑已全部完成"); return; }
+      const payload = {
+        title: `【${p.title}】${next.title}`,
+        cat: p.cat, project_id: p.id,
+        deadline: next.deadline || p.deadline || "this_week",
+        impact: "severe", effort: "h2", flex: "only_me",
+        focus: CATS[p.cat].deep?"deep":"shallow",
+        progress:0, time_planned:2, time_spent:0,
+        blocker:p.blocker||"", result_note:"",
+        id:uid("t"), createdAt:Date.now(), done:false, completedAt:null
+      };
+      payload.score = computeScore(payload);
+      state.tasks.unshift(normalizeTask(payload));
+      saveState(true); tab="board"; render(); toast("已生成今日事项");
+    }
+    if (action==="archive-project") {
+      const doneC = p.milestones.filter((m)=>m.done).length;
+      const allDone = p.milestones.length>0 && doneC===p.milestones.length;
+      if (!allDone && !confirm(`还有 ${p.milestones.length-doneC} 个里程碑未完成，仍要归档「${p.title}」吗？`)) return;
+      p.status = "done";
+      p.completedAt = new Date().toISOString();
+      if (!p.summary) {
+        p.summary = `归档时进度 ${projProgress(p)}%，投入 ${p.time_spent_hours}h/${p.time_planned_hours}h。`;
+      }
+      saveState(true); render(); toast("项目已归档，可在「回看」查看");
+    }
+  }
+
+  els.lanes.addEventListener("click", onLanesClick);
+  els.projectList.addEventListener("click", onProjectsClick);
+
+  $("helpCards").innerHTML = `
+    <div class="panel"><h3>调度</h3><ul><li>短事项与今日推进</li><li>快捷记工时 +15/+30/+1h</li><li>可关联到某个项目</li></ul></div>
+    <div class="panel"><h3>项目进度</h3><ul><li>进度环 = 里程碑完成比例</li><li>计划 vs 已投入工时</li><li>阻塞、目标日、下一步</li><li>可一键生成今日事项</li></ul></div>
+    <div class="panel"><h3>分析等待与并行</h3><ul><li>跑管线时点「提交等待」</li><li>系统改推可并行事项</li><li>结果到了点「结果已到」再处理</li></ul></div>
+    <div class="panel"><h3>回看 / 周报</h3><ul><li>完成事项时间线</li><li>周报草稿：完成/项目/下周重点/阻塞</li><li>导出 Markdown / 全量 JSON</li></ul></div>
+    <div class="panel"><h3>桌面应用</h3><ul><li>一键导出 / 导入 JSON</li><li>开机自启开关</li><li>托盘菜单也可导入导出</li><li>数据在用户目录，与个人版隔离</li></ul></div>
+  `;
+
+  render();
+  pullFromDesktop(false);
+  if (window.shixu && window.shixu.onUpdate) {
+    window.shixu.onUpdate((data) => {
+      if (applyExternalState(data || {})) render();
+    });
+  } else {
+    setInterval(() => pullFromDesktop(false), 25000);
+  }
+})();
+</script>
+</body>
+</html>
