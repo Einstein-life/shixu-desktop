@@ -341,10 +341,22 @@
           state = normalize(data || {});
           render();
         });
+      } else if (new URLSearchParams(location.search).get("demo") === "1") {
+        state = normalize({
+          slot: "60",
+          tasks: [
+            { id: "t1", title: "完成 DMR 与 DEG 关联主图（等服务器结果）", cat: "analysis", deadline: "today", score: 18, run_state: "waiting", time_spent: 1, progress: 40 },
+            { id: "t2", title: "改论文 Results 第三段与图注", cat: "paper", deadline: "three_days", score: 14, time_spent: 0.5, progress: 20 },
+            { id: "t3", title: "组会汇报：准备 3 页进度", cat: "meeting", deadline: "today", score: 12, time_spent: 0, progress: 0 },
+            { id: "t4", title: "扫 5 篇甲基化 + TE 新文献摘要", cat: "literature", deadline: "this_week", score: 3, time_spent: 0, progress: 0 }
+          ],
+          projects: []
+        });
       } else {
         state = normalize({ tasks: [], projects: [] });
       }
       render();
+      if (new URLSearchParams(location.search).get("expanded") === "1") setExpanded(true);
     }
 
     $("btnExpand").addEventListener("click", () => setExpanded(true));

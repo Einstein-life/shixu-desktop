@@ -9,8 +9,10 @@
   "scripts": {
     "start": "electron .",
     "dist": "node build-prepackaged.js",
+    "dist:win": "node build-prepackaged.js",
     "dist:full": "node build-dist.js",
-    "pack:portable": "node -e \"console.log('Use release/时序调度-portable after build-dist or manual copy')\""
+    "dist:mac": "node build-mac.js",
+    "dist:all": "node build-mac.js"
   },
   "devDependencies": {
     "electron": "^33.2.0",
@@ -44,6 +46,27 @@
       "createStartMenuShortcut": true,
       "shortcutName": "时序调度",
       "artifactName": "时序调度-Setup-${version}.exe"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "artifactName": "Shixu-Desktop-${version}-mac-${arch}.${ext}",
+      "darkModeSupport": true
+    },
+    "dmg": {
+      "title": "时序调度",
+      "artifactName": "Shixu-Desktop-${version}-mac-${arch}.${ext}"
     }
   },
   "allowScripts": {
