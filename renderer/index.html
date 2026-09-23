@@ -303,7 +303,8 @@
   ];
 
   let state = loadState();
-  let tab = "board";
+  let tab = (new URLSearchParams(location.search).get("tab") || "board").replace(/[^a-z]/g, "") || "board";
+  if (!["board", "projects", "review"].includes(tab)) tab = "board";
   let filter = "all";
   let formMode = null;
 
@@ -1375,14 +1376,60 @@
     <div class="panel"><h3>桌面应用</h3><ul><li>一键导出 / 导入 JSON</li><li>开机自启开关</li><li>托盘菜单也可导入导出</li><li>数据在用户目录，与个人版隔离</li></ul></div>
   `;
 
-  render();
-  pullFromDesktop(false);
-  if (window.shixu && window.shixu.onUpdate) {
-    window.shixu.onUpdate((data) => {
-      if (applyExternalState(data || {})) render();
+  // 文档截图 / 预览：?demo=1 载入示例数据（不影响正常使用）
+  if (new URLSearchParams(location.search).get("demo") === "1") {
+    state = normalizeState({
+      version: 3,
+      slot: "60",
+      capacity_hours: 6,
+      projects: [
+        {
+          id: "p_demo", title: "小麦 sRNA / TE 相关论文", cat: "paper", deadline: "three_days",
+          deadline_date: "2026-10-20", status: "active", time_planned_hours: 40, time_spent_hours: 12.5,
+          blocker: "等补充甲基化对照结果",
+          milestones: [
+            { id: "m1", title: "分析结果冻结 / 主表就绪", done: true, doneAt: "2026-09-10" },
+            { id: "m2", title: "主图 + 图注定稿", done: false, deadline: "2026-09-28" },
+            { id: "m3", title: "Methods / 结果初稿", done: false, deadline: "2026-10-05" },
+            { id: "m4", title: "讨论与参考文献", done: false, deadline: "2026-10-12" },
+            { id: "m5", title: "投稿包提交", done: false, deadline: "2026-10-20" }
+          ]
+        },
+        {
+          id: "p_demo2", title: "甲基化分析平台优化", cat: "analysis", deadline: "this_week",
+          deadline_date: "2026-09-30", status: "active", time_planned_hours: 24, time_spent_hours: 8,
+          blocker: "",
+          milestones: [
+            { id: "m1", title: "预处理模块验收", done: true, doneAt: "2026-08-20" },
+            { id: "m2", title: "联合分析 API 稳定", done: true, doneAt: "2026-09-05" },
+            { id: "m3", title: "湿实验用户路径优化", done: false, deadline: "2026-09-25" },
+            { id: "m4", title: "英文 UI 与报告导出", done: false, deadline: "2026-09-30" }
+          ]
+        }
+      ],
+      tasks: [
+        { id: "t1", title: "完成 DMR 与 DEG 关联主图", cat: "analysis", deadline: "today", impact: "others", effort: "h2", flex: "only_me", focus: "deep", progress: 40, time_planned: 3, time_spent: 1, project_id: "p_demo", createdAt: 1 },
+        { id: "t2", title: "改论文 Results 第三段与图注", cat: "paper", deadline: "three_days", impact: "severe", effort: "h2", flex: "only_me", focus: "deep", progress: 20, time_planned: 2, time_spent: 0.5, project_id: "p_demo", createdAt: 2 },
+        { id: "t3", title: "组会汇报：准备 3 页进度", cat: "meeting", deadline: "today", impact: "mild", effort: "h1", flex: "only_me", focus: "shallow", progress: 0, time_planned: 1, time_spent: 0, createdAt: 3 },
+        { id: "t4", title: "回复合作者：数据格式与时间点", cat: "admin", deadline: "today", impact: "others", effort: "m15", flex: "only_me", focus: "shallow", progress: 0, time_planned: 0.25, time_spent: 0, createdAt: 4 },
+        { id: "t5", title: "扫 5 篇甲基化 + TE 新文献摘要", cat: "literature", deadline: "this_week", impact: "mild", effort: "m30", flex: "deferrable", focus: "shallow", progress: 0, time_planned: 0.5, time_spent: 0, createdAt: 5 },
+        { id: "t6", title: "整理样本 sheet 与小数据验证脚本", cat: "analysis", deadline: "this_week", impact: "mild", effort: "h1", flex: "only_me", focus: "deep", progress: 100, time_planned: 1, time_spent: 1.2, done: true, completedAt: "2026-09-18T16:20:00", result_note: "小样本脚本通过", createdAt: 0 }
+      ]
     });
-  } else {
-    setInterval(() => pullFromDesktop(false), 25000);
+    saveState(false);
+  }
+
+  const isDemoShot = new URLSearchParams(location.search).get("demo") === "1";
+  render();
+  if (!isDemoShot) {
+    pullFromDesktop(false);
+    if (window.shixu && window.shixu.onUpdate) {
+      window.shixu.onUpdate((data) => {
+        if (applyExternalState(data || {})) render();
+      });
+    } else {
+      setInterval(() => pullFromDesktop(false), 25000);
+    }
   }
 })();
 </script>

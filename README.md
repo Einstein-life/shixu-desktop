@@ -9,6 +9,28 @@
 
 ---
 
+## 界面预览
+
+| 主窗口 · 调度 | 主窗口 · 项目进度 |
+|:---:|:---:|
+| ![调度](docs/images/app-board.png) | ![项目进度](docs/images/app-projects.png) |
+
+| 主窗口 · 回看 / 周报 | 置顶悬浮窗（展开） |
+|:---:|:---:|
+| ![回看](docs/images/app-review.png) | ![悬浮窗](docs/images/dock-expanded.png) |
+
+<div align="center">
+
+**收起状态的悬浮窗**（点击展开，可拖动到任意位置）
+
+![悬浮窗收起](docs/images/dock-collapsed.png)
+
+</div>
+
+> 截图为示例数据界面（分析 / 论文 / 会议等），便于理解操作路径；安装后数据在你本机。
+
+---
+
 ## 为什么需要它
 
 | 常见困境 | 时序怎么帮 |
@@ -17,25 +39,53 @@
 | 长期论文、课题进度说不清 | 项目 + 里程碑，进度环一眼可见，标出「下一步」 |
 | 分析程序在跑，人干等 | 「提交等待 → 可并行 → 结果已到」，机器跑机器的，人做人该做的 |
 | 周五想复盘却凑不齐内容 | 完成事项自动进时间线，一键生成周报 Markdown |
-| 切窗口时看不到优先级 | 置顶悬浮窗：收起看摘要，点击展开，可拖到任意位置 |
-
-数据保存在本机用户目录，**不会上传到服务器**。
+| 切窗口时看不到优先级 | 置顶悬浮窗：收起看摘要，点击展开 |
 
 ---
 
-## 功能一览
+## 界面与操作
 
-- **调度**：自动分档、记工时、关联项目
-- **项目进度**：里程碑、工时对比、阻塞、下一步
-- **分析等待**：提交等待 / 结果已到 / 可并行
-- **周报**：完成时间线 + Markdown 导出
-- **桌面**：置顶悬浮窗、托盘、开机自启、一键导入导出
+### 1. 调度（主窗口）
+
+![调度页](docs/images/app-board.png)
+
+1. **录入事项** 或 **一键导入** JSON  
+2. 选择当前可用连续时间（≤15 分 / 30 分 / 1 小时 / 2 小时+）  
+3. 在「立刻处理 / 待深度块 / 等待结果」中开工  
+4. 快捷记工时：+15 分 / +30 分 / +1 小时  
+5. 分析类任务可点 **提交等待**；结果好了点 **结果已到**
+
+### 2. 项目进度（长期工作）
+
+![项目进度](docs/images/app-projects.png)
+
+- 进度环 = 里程碑完成比例  
+- 显示计划工时 vs 已投入、阻塞、目标日  
+- 高亮 **下一步**，可一键 **生成今日事项** 进调度
+
+### 3. 回看 / 周报
+
+![周报](docs/images/app-review.png)
+
+- 已完成事项时间线  
+- **生成本周总结** → Markdown 草稿  
+- 导出 / 导入 JSON，便于备份与换机
+
+### 4. 置顶悬浮窗
+
+| 收起 | 展开 |
+|:---:|:---:|
+| ![收起](docs/images/dock-collapsed.png) | ![展开](docs/images/dock-expanded.png) |
+
+- 拖动移动位置；**点击**展开（不因悬停误展开）  
+- 可并行推荐、等待中任务、快捷记工时  
+- 托盘菜单：打开主界面 / 导入导出 / 退出
 
 ---
 
 ## 下载安装
 
-前往 **[Releases](../../releases)** 获取安装包：
+前往 **[Releases](../../releases)**：
 
 ### Windows
 
@@ -44,7 +94,7 @@
 | `时序调度-Setup-x.x.x.exe` | 正式安装包（推荐） |
 | `shixu-Portable.zip` | 绿色版 |
 
-要求：Windows 10 / 11（64 位）。未签名时 SmartScreen：**更多信息 → 仍要运行**。
+Windows 10 / 11（64 位）。未签名时 SmartScreen：**更多信息 → 仍要运行**。
 
 ### macOS
 
@@ -54,28 +104,12 @@
 | `Shixu-Desktop-x.x.x-mac-x64.dmg` | Intel |
 | 对应 `.zip` | 免安装压缩包 |
 
-要求：macOS 11+。未签名 / 未公证时首次打开：
+macOS 11+。未公证时首次：右键 App → **打开**（不要直接双击）。
 
-1. 右键 App → **打开**（不要直接双击）  
-2. 或在「系统设置 → 隐私与安全性」中仍要打开  
-
-> 未购买 Apple Developer 证书前，Gatekeeper 会拦截直接双击，属预期行为。
-
-数据文件：
+数据路径：
 
 - Windows：`%APPDATA%\时序调度\shixu-data.json`
 - macOS：`~/Library/Application Support/时序调度/shixu-data.json`
-
----
-
-## 快速上手
-
-1. 录入事项或导入 JSON  
-2. 选择当前连续时间（≤15 分 / 30 分 / 1 小时 / 2 小时+）  
-3. 从「立刻处理」开始；深度工作放进整块时间  
-4. 跑程序点 **提交等待**，空档做可并行事项  
-5. 结果到了点 **结果已到**  
-6. 每周 **生成本周总结** 并导出  
 
 ---
 
@@ -88,9 +122,7 @@ npm install
 npm start
 ```
 
-依赖：Node.js 20+。
-
-网络较慢时可使用镜像：
+需要 Node.js 20+。网络较慢可用镜像：
 
 ```bash
 export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
@@ -102,29 +134,27 @@ npm install
 
 ## 打包
 
-### Windows
-
 ```bash
+# Windows
 python scripts/sync_and_fix.py
 npm run dist:win
-```
 
-### macOS（需在 macOS 上执行）
-
-```bash
+# macOS（需在 macOS 上）
 node scripts/make-icns.js
 npm run dist:mac
 ```
 
-产物在 `release/`。
-
-### 自动构建
-
-推送 `v*` 标签后，GitHub Actions 会在 **Windows + macOS** 双平台出包并挂到 Release：
+推送 `v*` 标签后，GitHub Actions 会自动构建 Windows + macOS 并挂到 Release。
 
 ```bash
-git tag v1.0.1
-git push origin v1.0.1
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+更新文档截图（需本机 Chrome）：
+
+```bash
+python scripts/capture-docs-shots.py
 ```
 
 ---
@@ -134,9 +164,9 @@ git push origin v1.0.1
 ```text
 electron/       主进程：窗口、托盘、自启、导入导出
 renderer/       主窗口 + 悬浮窗
+docs/images/    README 界面截图
 assets/         图标
-scripts/        打包与图标脚本
-build-*.js      各平台构建入口
+scripts/        打包 / 图标 / 截图脚本
 ```
 
 ---
