@@ -71,17 +71,13 @@ function iconPath() {
   return path.join(__dirname, '..', 'assets', 'icon.png');
 }
 
-function loginItemArgs() {
-  return [];
-}
-
 function applyAutoStart(enabled) {
   autoStartEnabled = !!enabled;
   try {
+    // macOS / Windows 通用登录项；打包后使用当前可执行文件
     app.setLoginItemSettings({
       openAtLogin: autoStartEnabled,
       path: process.execPath,
-      args: loginItemArgs(),
       name: '时序调度',
       enabled: autoStartEnabled
     });
@@ -161,7 +157,10 @@ function createDockWindow() {
 function createTray() {
   try {
     const img = nativeImage.createFromPath(iconPath());
-    tray = new Tray(img.resize({ width: 16, height: 16 }));
+    const trayIcon = img.isEmpty()
+      ? nativeImage.createEmpty()
+      : img.resize({ width: 16, height: 16 });
+    tray = new Tray(trayIcon);
     const menu = Menu.buildFromTemplate([
       {
         label: '打开主界面',
@@ -203,7 +202,13 @@ function createTray() {
     ]);
     tray.setToolTip('时序调度');
     tray.setContextMenu(menu);
+    // Windows：单击托盘切换悬浮窗；macOS：以菜单为准，避免与右键冲突
     tray.on('click', () => {
+      if (process.platform === 'darwin') {
+        if (!mainWindow) createMainWindow();
+        else mainWindow.show();
+        return;
+      }
       if (!dockWindow) createDockWindow();
       else if (dockWindow.isVisible()) dockWindow.hide();
       else dockWindow.show();
@@ -339,6 +344,29 @@ app.whenReady().then(() => {
   store = loadData();
   const s = loadSettings();
   if (s.openAtLogin) applyAutoStart(true);
+
+  // macOS 程序坞菜单
+  if (process.platform === 'darwin') {
+    const dockMenu = Menu.buildFromTemplate([
+      {
+        label: '打开主界面',
+        click: () => {
+          if (!mainWindow) createMainWindow();
+          else mainWindow.show();
+        }
+      },
+      {
+        label: '显示/隐藏悬浮窗',
+        click: () => {
+          if (!dockWindow) createDockWindow();
+          else if (dockWindow.isVisible()) dockWindow.hide();
+          else dockWindow.show();
+        }
+      }
+    ]);
+    app.dock.setMenu(dockMenu);
+  }
+
   createMainWindow();
   createDockWindow();
   createTray();
@@ -347,12 +375,16 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
       createDockWindow();
+    } else {
+      if (mainWindow) mainWindow.show();
     }
   });
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin' && !tray) app.quit();
+  // 托盘常驻；macOS 习惯保留 Dock 图标
+  if (process.platform === 'darwin') return;
+  if (!tray) app.quit();
 });
 
 app.on('before-quit', () => {

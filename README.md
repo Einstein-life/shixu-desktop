@@ -1,6 +1,6 @@
 # 时序调度 · Shixu Desktop
 
-**Windows 桌面效率工具**：帮你排清「今天先做什么」，并跟踪长期项目进度。
+**Windows / macOS 桌面效率工具**：帮你排清「今天先做什么」，并跟踪长期项目进度。
 
 适合分析、科研、写作、项目等多线工作：任务容易碎片化，既要推进深度工作，又要处理会议、沟通与等待程序出结果的空档。
 
@@ -25,70 +25,57 @@
 
 ## 功能一览
 
-### 调度
-- 录入事项：类型、截止、后果、连续时间需求、关联项目
-- 自动分档，支持快捷记工时（+15 分 / +30 分 / +1 小时）
-- 分析类任务可标记 **提交等待 / 结果已到**
-
-### 项目进度
-- 里程碑清单与完成比例
-- 计划工时 vs 已投入工时
-- 阻塞、目标日期、下一步
-- 一键把「下一步」生成为今日事项
-
-### 回看与周报
-- 已完成事项时间线
-- 周总结草稿：完成情况、项目进度、下周重点、阻塞、产出提示
-- 导出 Markdown / JSON
-
-### 桌面体验
-- 主窗口（调度 / 项目 / 回看）
-- 置顶悬浮窗（托盘可显示隐藏）
-- 开机自启开关
-- 一键导入 / 导出 JSON
+- **调度**：自动分档、记工时、关联项目
+- **项目进度**：里程碑、工时对比、阻塞、下一步
+- **分析等待**：提交等待 / 结果已到 / 可并行
+- **周报**：完成时间线 + Markdown 导出
+- **桌面**：置顶悬浮窗、托盘、开机自启、一键导入导出
 
 ---
 
 ## 下载安装
 
-前往 **[Releases](../../releases)** 获取最新安装包：
+前往 **[Releases](../../releases)** 获取安装包：
 
-| 包 | 适合 |
+### Windows
+
+| 包 | 说明 |
 |----|------|
-| `时序调度-Setup-x.x.x.exe` | 正式安装（推荐），创建桌面与开始菜单快捷方式 |
-| `时序调度-绿色版-x.x.x.zip` | 免安装：解压后运行「一键安装到桌面.bat」或 `时序调度.exe` |
+| `时序调度-Setup-x.x.x.exe` | 正式安装包（推荐） |
+| `shixu-Portable.zip` | 绿色版 |
 
-**系统要求**：Windows 10 / 11（64 位）
+要求：Windows 10 / 11（64 位）。未签名时 SmartScreen：**更多信息 → 仍要运行**。
 
-**SmartScreen 提示**：若未购买代码签名证书，首次运行可能提示「已保护你的电脑」→ 选择 **更多信息 → 仍要运行**。
+### macOS
 
-数据文件位置：
+| 包 | 说明 |
+|----|------|
+| `Shixu-Desktop-x.x.x-mac-arm64.dmg` | Apple Silicon（M 系列） |
+| `Shixu-Desktop-x.x.x-mac-x64.dmg` | Intel |
+| 对应 `.zip` | 免安装压缩包 |
 
-```text
-%APPDATA%\时序调度\shixu-data.json
-```
+要求：macOS 11+。未签名 / 未公证时首次打开：
 
-每人独立存放，首次启动为空，可在应用内录入，或用「一键导入」加载 JSON。
+1. 右键 App → **打开**（不要直接双击）  
+2. 或在「系统设置 → 隐私与安全性」中仍要打开  
+
+> 未购买 Apple Developer 证书前，Gatekeeper 会拦截直接双击，属预期行为。
+
+数据文件：
+
+- Windows：`%APPDATA%\时序调度\shixu-data.json`
+- macOS：`~/Library/Application Support/时序调度/shixu-data.json`
 
 ---
 
 ## 快速上手
 
-1. **录入事项**（或导入 JSON）  
-2. 顶部选择当前连续时间：≤15 分 / 30 分 / 1 小时 / 2 小时+  
-3. 按「立刻处理」开始做事；深度工作尽量放进整块时间  
-4. 管线、跑数等点 **提交等待**，利用空档做可并行事项  
-5. 结果出来点 **结果已到**，处理完再标记完成  
-6. 每周点 **生成本周总结**，导出 Markdown 备用  
-
-### 推荐工作节奏（示例）
-
-| 时段 | 做什么 |
-|------|--------|
-| 上午整块 | 1–2 个深度主线（分析 / 写作） |
-| 会前、等待结果 | ≤15–30 分碎片任务 |
-| 会后 15 分钟 | 写下行动项与截止日 |
-| 周五 | 生成周报，归档已完成事项 |
+1. 录入事项或导入 JSON  
+2. 选择当前连续时间（≤15 分 / 30 分 / 1 小时 / 2 小时+）  
+3. 从「立刻处理」开始；深度工作放进整块时间  
+4. 跑程序点 **提交等待**，空档做可并行事项  
+5. 结果到了点 **结果已到**  
+6. 每周 **生成本周总结** 并导出  
 
 ---
 
@@ -101,51 +88,43 @@ npm install
 npm start
 ```
 
-依赖：[Node.js](https://nodejs.org/) 20+、Git。
+依赖：Node.js 20+。
 
-**网络较慢时**（如国内）可使用镜像后再安装：
+网络较慢时可使用镜像：
 
-```powershell
-$env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
-$env:ELECTRON_BUILDER_BINARIES_MIRROR = "https://npmmirror.com/mirrors/electron-builder-binaries/"
+```bash
+export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
 npm install
 ```
 
-> 若出现 Electron 未正确安装：确认 `node_modules/electron/path.txt` 内容为一行 `electron.exe`。
-
 ---
 
-## 打包 Windows 安装包
+## 打包
+
+### Windows
 
 ```bash
-# 同步界面资源到 portable（修改 renderer/electron 后建议执行）
 python scripts/sync_and_fix.py
-# 或
-powershell -ExecutionPolicy Bypass -File scripts/sync-portable.ps1
-
-npm run dist
+npm run dist:win
 ```
 
-产物目录：`release/时序调度-Setup-*.exe`
-
-### 代码签名（可选）
-
-```powershell
-$env:SHIXU_CERT_FILE   = "C:\path\to\your.pfx"
-$env:SHIXU_CERT_PASSWORD = "your-password"
-npm run dist
-```
-
-对外正式分发建议购买 **OV / EV** 代码签名证书；自签名仅适合本地测试。
-
-### CI
-
-仓库自带 GitHub Actions（`.github/workflows/build-windows.yml`）：  
-推送形如 `v1.0.0` 的标签后，可在 Actions 中自动构建 Windows 安装包。
+### macOS（需在 macOS 上执行）
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+node scripts/make-icns.js
+npm run dist:mac
+```
+
+产物在 `release/`。
+
+### 自动构建
+
+推送 `v*` 标签后，GitHub Actions 会在 **Windows + macOS** 双平台出包并挂到 Release：
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
 ---
@@ -153,34 +132,18 @@ git push origin v1.0.0
 ## 项目结构
 
 ```text
-electron/       主进程：窗口、托盘、开机自启、导入导出、数据存储
-renderer/       界面：主窗口 index.html、悬浮窗 dock.html
-assets/         应用图标
-scripts/        打包同步、本地证书脚本
+electron/       主进程：窗口、托盘、自启、导入导出
+renderer/       主窗口 + 悬浮窗
+assets/         图标
+scripts/        打包与图标脚本
+build-*.js      各平台构建入口
 ```
 
-技术栈：Electron · 原生 HTML/CSS/JS · electron-builder（NSIS）· 本地 JSON
-
 ---
 
-## 数据与隐私
+## 隐私
 
-- 任务、项目、周报仅存本机  
-- 导入 / 导出由你自己触发，使用系统文件对话框  
-- 本仓库 **不会** 收集使用数据  
-
----
-
-## 贡献
-
-欢迎 Issue 与 Pull Request：
-
-1. Fork 本仓库  
-2. 创建分支：`git checkout -b feature/your-idea`  
-3. 提交并推送  
-4. 发起 Pull Request  
-
-请勿提交：个人任务数据、证书与密钥、`node_modules/`、`release/` 安装包。
+任务、项目、周报仅存本机；导入导出由你手动触发；不收集使用数据。
 
 ---
 
