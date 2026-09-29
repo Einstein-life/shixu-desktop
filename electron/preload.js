@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('shixu', {
   dockDisplayMode: (mode) => ipcRenderer.invoke('shixu:dock-display-mode', mode),
   dockGetDisplayMode: () => ipcRenderer.invoke('shixu:dock-get-display-mode'),
   dockSlide: (payload) => ipcRenderer.invoke('shixu:dock-slide', payload),
+  dockSetBall: (on) => ipcRenderer.invoke('shixu:dock-set-ball', !!on),
   openMain: () => ipcRenderer.invoke('shixu:open-main'),
   hideDock: () => ipcRenderer.invoke('shixu:hide-dock'),
   closeApp: () => ipcRenderer.invoke('shixu:close-app'),

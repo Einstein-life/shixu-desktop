@@ -105,10 +105,61 @@
       cursor:pointer; background:var(--chrome2); color:#fff; font-weight:600;
     }
     .foot button.primary { background:#2A3F8F; }
+
+    /* 贴边篮球：只显示球，无方块面板 */
+    #ballWrap {
+      display:none;
+      width:40px; height:40px;
+      align-items:center; justify-content:center;
+      background:transparent;
+    }
+    #shell.ball-only {
+      background:transparent;
+      border:none;
+      box-shadow:none;
+    }
+    #shell.ball-only #collapsed,
+    #shell.ball-only #expanded {
+      display:none !important;
+    }
+    #shell.ball-only #ballWrap {
+      display:flex;
+    }
+    .bb {
+      width:32px; height:32px; border-radius:50%;
+      background:
+        radial-gradient(circle at 35% 30%, #E89058 0 18%, transparent 19%),
+        #D4682E;
+      border:1px solid #8B3A18;
+      position:relative;
+      overflow:hidden;
+      cursor:pointer;
+    }
+    .bb::before,
+    .bb::after {
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+    }
+    .bb::before {
+      background:
+        linear-gradient(to right, transparent 47%, #2A1A12 47%, #2A1A12 53%, transparent 53%),
+        linear-gradient(to bottom, transparent 47%, #2A1A12 47%, #2A1A12 53%, transparent 53%);
+    }
+    .bb::after {
+      border:1.5px solid #2A1A12;
+      clip-path: inset(0 0 0 0);
+      background:
+        radial-gradient(circle at 50% 50%, transparent 58%, #2A1A12 59%, #2A1A12 61%, transparent 62%);
+    }
   </style>
 </head>
 <body>
   <div id="shell">
+    <div id="ballWrap" title="点击展开">
+      <div class="bb" id="bb"></div>
+    </div>
     <!-- collapsed -->
     <div id="collapsed" class="panel open">
       <div class="top drag">
@@ -330,6 +381,11 @@
 
     function setExpanded(v) {
       expanded = !!v;
+      if (expanded) {
+        edgeHidden = false;
+        document.getElementById("shell").classList.remove("ball-only");
+        if (window.shixu && window.shixu.dockSetBall) window.shixu.dockSetBall(false);
+      }
       $("collapsed").classList.toggle("open", !expanded);
       $("expanded").classList.toggle("open", expanded);
       if (window.shixu && window.shixu.dockSetSize) window.shixu.dockSetSize(expanded);
@@ -358,7 +414,7 @@
       if (displayMode === "always") {
         await showFromEdge(true);
       } else {
-        setTimeout(hideToEdge, 800);
+        setTimeout(hideToEdge, 500);
       }
     }
 
@@ -367,12 +423,20 @@
       if (window.shixu && window.shixu.dockSlide) {
         await window.shixu.dockSlide({ mode: "hide-edge" });
       }
+      document.getElementById("shell").classList.add("ball-only");
+      if (window.shixu && window.shixu.dockSetBall) {
+        await window.shixu.dockSetBall(true);
+      }
       edgeHidden = true;
     }
 
     async function showFromEdge(force) {
       if (!edgeHidden && !force) return;
       edgeHidden = false;
+      document.getElementById("shell").classList.remove("ball-only");
+      if (window.shixu && window.shixu.dockSetBall) {
+        await window.shixu.dockSetBall(false);
+      }
       if (window.shixu && window.shixu.dockSlide && homePos) {
         await window.shixu.dockSlide({ mode: "show", x: homePos.x, y: homePos.y });
       }
@@ -384,6 +448,10 @@
 
     $("btnMode") && $("btnMode").addEventListener("click", toggleMode);
     $("btnMode2") && $("btnMode2").addEventListener("click", toggleMode);
+    $("bb") && $("bb").addEventListener("click", async () => {
+      await showFromEdge(true);
+      setExpanded(true);
+    });
 
     let hoverCount = 0;
     let lastHoverTs = Date.now();
