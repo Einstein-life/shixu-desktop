@@ -1,5 +1,12 @@
 from pathlib import Path
 import shutil
+import sys
+
+# Windows CI 默认 stdout 为 cp1252，中文路径 print 会炸
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 root = Path(__file__).resolve().parents[1]
 release = root / "release"
@@ -35,7 +42,8 @@ html = (app / "renderer" / "index.html").read_text(encoding="utf-8")
 print("has_export", "btnExportDesk" in html)
 print("has_autostart", "btnAutoStart" in html)
 print("has_import", "btnImportDesk" in html)
-print("SYNC_OK", app)
+# 只打印 ASCII，避免 cp1252 终端崩溃
+print("SYNC_OK", str(app).encode("ascii", "backslashreplace").decode("ascii"))
 
 selfsign = """# Local self-signed cert for Shixu Desktop (TEST ONLY).
 $ErrorActionPreference = "Stop"

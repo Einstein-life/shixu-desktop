@@ -28,10 +28,6 @@ jobs:
           $p = "node_modules/electron/path.txt"
           if (-not (Test-Path $p)) { Set-Content -Path $p -Value "electron.exe" -Encoding ascii }
 
-      - name: Prepare portable
-        shell: pwsh
-        run: python scripts/sync_and_fix.py
-
       - name: Build Windows installer
         run: npm run dist:win
         env:
@@ -41,14 +37,22 @@ jobs:
       - name: Pack portable zip
         shell: pwsh
         run: |
-          Compress-Archive -Path "release\时序调度-portable\*" -DestinationPath "release\shixu-Portable.zip" -Force
+          # 优先用 electron-builder 的 unpacked 输出（完整运行时）
+          $unpacked = Get-ChildItem -Directory -Path "release" -Filter "*win-unpacked*" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $unpacked) {
+            python scripts/sync_and_fix.py
+            $unpacked = Get-ChildItem -Directory -Path "release" -Filter "*portable*" -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          if ($unpacked) {
+            Compress-Archive -Path (Join-Path $unpacked.FullName '*') -DestinationPath "release/shixu-Portable.zip" -Force
+          }
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: shixu-windows
           path: |
-            release/时序调度-Setup-*.exe
+            release/Shixu-Desktop-Setup-*.exe
             release/shixu-Portable.zip
           if-no-files-found: error
 
@@ -84,7 +88,8 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    # 即使一个平台失败，只要另一个成功也发布
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/') && (needs.build-windows.result == 'success' || needs.build-macos.result == 'success') }}
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     permissions:
@@ -101,3 +106,4 @@ jobs:
           files: |
             dist/**
           generate_release_notes: true
+          fail_on_unmatched_files: false
