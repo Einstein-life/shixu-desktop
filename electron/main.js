@@ -312,9 +312,12 @@ ipcMain.handle('shixu:reveal-data', () => {
   return { path: p };
 });
 
-/** 多显示器 / DPI：优先用悬浮窗所在屏幕，否则鼠标所在屏，最后主屏 */
-function layoutDisplay() {
+/** 多显示器 / DPI：贴边/展开优先用鼠标所在屏（碰到球时），否则窗口所在屏 */
+function layoutDisplay(preferCursor) {
   try {
+    if (preferCursor) {
+      return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    }
     if (dockWindow && !dockWindow.isDestroyed()) {
       return screen.getDisplayMatching(dockWindow.getBounds());
     }
@@ -339,32 +342,52 @@ function clampToWorkArea(width, height, x, y, display) {
   };
 }
 
-function applyDockBounds(width, height, x, y) {
+function applyDockBounds(width, height, x, y, preferCursor) {
   if (!dockWindow || dockWindow.isDestroyed()) return null;
-  const display = layoutDisplay();
+  const display = layoutDisplay(!!preferCursor);
   const bounds = clampToWorkArea(width, height, x, y, display);
-  // 一次 setBounds，避免 setContentSize 后定位错位、被任务栏裁切
   dockWindow.setBounds(bounds);
+  // 二次校正：防止 DPI/跨屏导致 setBounds 后仍越界
+  const now = dockWindow.getBounds();
+  const wa = display.workArea;
+  if (now.x < wa.x || now.y < wa.y || now.x + now.width > wa.x + wa.width + 2 || now.y + now.height > wa.y + wa.height + 2) {
+    const fixed = clampToWorkArea(width, height, wa.x + wa.width - bounds.width - 12, bounds.y, display);
+    dockWindow.setBounds(fixed);
+  }
   dockWindow.setAlwaysOnTop(true, 'screen-saver');
-  return bounds;
+  return dockWindow.getBounds();
 }
 
-function dockCurrentY(height) {
-  const b = dockWindow && !dockWindow.isDestroyed() ? dockWindow.getBounds() : null;
-  const display = layoutDisplay();
+/** 面板（非球）固定靠当前屏右侧、完整可见 */
+function placePanel(width, height, preferCursor) {
+  const display = layoutDisplay(!!preferCursor);
   const wa = display.workArea;
+  const y = dockCurrentY(height, preferCursor);
+  const x = wa.x + wa.width - width - 12;
+  return applyDockBounds(width, height, x, y, preferCursor);
+}
+
+function placeBall(preferCursor) {
+  const display = layoutDisplay(!!preferCursor);
+  const wa = display.workArea;
+  const size = 56;
+  return applyDockBounds(size, size, wa.x + wa.width - size - 4, dockCurrentY(size, preferCursor), preferCursor);
+}
+
+function dockCurrentY(height, preferCursor) {
+  const display = layoutDisplay(!!preferCursor);
+  const wa = display.workArea;
+  const b = dockWindow && !dockWindow.isDestroyed() ? dockWindow.getBounds() : null;
   if (b && b.height <= height + 8) {
     return b.y;
   }
-  return wa.y + Math.floor(wa.height * 0.22);
+  return wa.y + Math.floor(Math.max(0, (wa.height - height) * 0.22));
 }
 
 ipcMain.handle('shixu:dock-set-size', (_e, expanded) => {
   if (!dockWindow) return false;
-  const b = dockWindow.getBounds();
-  const width = expanded ? 420 : 340;
-  const height = expanded ? 660 : 200;
-  applyDockBounds(width, height, b.x, dockCurrentY(height));
+  if (expanded) placePanel(420, 660, true);
+  else placePanel(340, 200, true);
   return true;
 });
 
@@ -380,36 +403,20 @@ ipcMain.handle('shixu:dock-get-display-mode', () => {
 
 ipcMain.handle('shixu:dock-set-ball', (_e, on) => {
   if (!dockWindow) return false;
-  const display = layoutDisplay();
-  const wa = display.workArea;
-  const b = dockWindow.getBounds();
-  if (on) {
-    // 篮球热区 56x56，完全落在当前屏工作区内
-    const size = 56;
-    applyDockBounds(size, size, wa.x + wa.width - size - 4, dockCurrentY(size));
-  } else {
-    const width = 340;
-    const height = 200;
-    applyDockBounds(width, height, b.x, dockCurrentY(height));
-  }
+  if (on) placeBall(false);
+  // 从球恢复：用鼠标所在屏，面板完整靠右贴回屏内
+  else placePanel(340, 200, true);
   return true;
 });
 
 ipcMain.handle('shixu:dock-slide', (_e, payload) => {
   if (!dockWindow) return false;
   const mode = (payload && payload.mode) || 'show';
-  const display = layoutDisplay();
-  const wa = display.workArea;
-  const b = dockWindow.getBounds();
   if (mode === 'hide-edge') {
-    const size = 56;
-    applyDockBounds(size, size, wa.x + wa.width - size - 4, dockCurrentY(size));
+    placeBall(true);
   } else if (mode === 'show') {
-    const width = 340;
-    const height = 200;
-    const x = Number.isFinite(payload && payload.x) ? payload.x : wa.x + wa.width - width - 16;
-    const y = Number.isFinite(payload && payload.y) ? payload.y : dockCurrentY(height);
-    applyDockBounds(width, height, x, y);
+    // 碰到球时鼠标在屏幕上：用 cursor 屏，并强制完整可见（不用球的 x）
+    placePanel(340, 200, true);
   }
   return true;
 });
