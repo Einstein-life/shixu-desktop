@@ -116,6 +116,7 @@
         <span class="badge today nodrag" id="badgeToday">今日 0</span>
         <span class="spacer"></span>
         <span class="hint">点击展开</span>
+        <button class="btn nodrag" id="btnMode" title="显示模式">显示：常显</button>
         <button class="btn nodrag" id="btnExpand" title="展开">＋</button>
         <button class="btn nodrag" id="btnClose" title="退出">×</button>
       </div>
@@ -130,6 +131,7 @@
         <strong style="color:#F4F7FA;font-size:13px">时序 · 生信调度</strong>
         <span class="hint nodrag">⠿ 可拖动</span>
         <span class="spacer"></span>
+        <button class="btn nodrag" id="btnMode2">显示：常显</button>
         <button class="btn nodrag" id="btnCollapse">—</button>
       </div>
       <div class="slots nodrag" id="slots"></div>
@@ -334,6 +336,61 @@
       if (window.shixu && window.shixu.dockSetSize) window.shixu.dockSetSize(expanded);
     }
 
+    let displayMode = "always";
+    let edgeHidden = false;
+    let homePos = null;
+
+    function modeLabel() {
+      return displayMode === "always" ? "显示：常显" : "显示：贴边";
+    }
+
+    function paintMode() {
+      const t = modeLabel();
+      if ($("btnMode")) $("btnMode").textContent = t;
+      if ($("btnMode2")) $("btnMode2").textContent = t;
+    }
+
+    async function setDisplayMode(mode) {
+      displayMode = mode === "edge" ? "edge" : "always";
+      paintMode();
+      if (window.shixu && window.shixu.dockDisplayMode) {
+        await window.shixu.dockDisplayMode(displayMode);
+      }
+      if (displayMode === "always") {
+        await showFromEdge(true);
+      }
+    }
+
+    async function hideToEdge() {
+      if (displayMode !== "edge" || expanded || edgeHidden) return;
+      if (window.shixu && window.shixu.dockSlide) {
+        await window.shixu.dockSlide({ mode: "hide-edge" });
+      }
+      edgeHidden = true;
+    }
+
+    async function showFromEdge(force) {
+      if (!edgeHidden && !force) return;
+      edgeHidden = false;
+      if (window.shixu && window.shixu.dockSlide && homePos) {
+        await window.shixu.dockSlide({ mode: "show", x: homePos.x, y: homePos.y });
+      }
+    }
+
+    async function toggleMode() {
+      await setDisplayMode(displayMode === "always" ? "edge" : "always");
+    }
+
+    $("btnMode") && $("btnMode").addEventListener("click", toggleMode);
+    $("btnMode2") && $("btnMode2").addEventListener("click", toggleMode);
+
+    document.getElementById("shell").addEventListener("mouseenter", () => {
+      if (displayMode === "edge") showFromEdge(true);
+    });
+    document.getElementById("shell").addEventListener("mouseleave", () => {
+      if (displayMode === "edge" && !expanded) setTimeout(hideToEdge, 900);
+    });
+
     async function init() {
       if (window.shixu) {
         state = normalize(await window.shixu.load());
@@ -341,6 +398,10 @@
           state = normalize(data || {});
           render();
         });
+        try {
+          const m = await window.shixu.dockGetDisplayMode();
+          displayMode = (m && m.displayMode === "edge") ? "edge" : "always";
+        } catch (_) {}
       } else if (new URLSearchParams(location.search).get("demo") === "1") {
         state = normalize({
           slot: "60",
@@ -355,6 +416,7 @@
       } else {
         state = normalize({ tasks: [], projects: [] });
       }
+      paintMode();
       render();
       if (new URLSearchParams(location.search).get("expanded") === "1") setExpanded(true);
     }

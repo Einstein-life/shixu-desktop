@@ -26,6 +26,9 @@ contextBridge.exposeInMainWorld('shixu', {
     return () => ipcRenderer.removeListener('shixu:menu-import', h);
   },
   dockSetSize: (expanded) => ipcRenderer.invoke('shixu:dock-set-size', !!expanded),
+  dockDisplayMode: (mode) => ipcRenderer.invoke('shixu:dock-display-mode', mode),
+  dockGetDisplayMode: () => ipcRenderer.invoke('shixu:dock-get-display-mode'),
+  dockSlide: (payload) => ipcRenderer.invoke('shixu:dock-slide', payload),
   openMain: () => ipcRenderer.invoke('shixu:open-main'),
   hideDock: () => ipcRenderer.invoke('shixu:hide-dock'),
   closeApp: () => ipcRenderer.invoke('shixu:close-app'),
