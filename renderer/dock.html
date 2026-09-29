@@ -115,8 +115,7 @@
         <span class="badge now nodrag" id="badgeNow">立刻 0</span>
         <span class="badge today nodrag" id="badgeToday">今日 0</span>
         <span class="spacer"></span>
-        <span class="hint">点击展开</span>
-        <button class="btn nodrag" id="btnMode" title="显示模式">显示：常显</button>
+        <button class="btn nodrag" id="btnMode" title="显示模式">常显</button>
         <button class="btn nodrag" id="btnExpand" title="展开">＋</button>
         <button class="btn nodrag" id="btnClose" title="退出">×</button>
       </div>
@@ -131,7 +130,7 @@
         <strong style="color:#F4F7FA;font-size:13px">时序 · 生信调度</strong>
         <span class="hint nodrag">⠿ 可拖动</span>
         <span class="spacer"></span>
-        <button class="btn nodrag" id="btnMode2">显示：常显</button>
+        <button class="btn nodrag" id="btnMode2">常显</button>
         <button class="btn nodrag" id="btnCollapse">—</button>
       </div>
       <div class="slots nodrag" id="slots"></div>
@@ -341,7 +340,7 @@
     let homePos = null;
 
     function modeLabel() {
-      return displayMode === "always" ? "显示：常显" : "显示：贴边";
+      return displayMode === "always" ? "常显" : "贴边";
     }
 
     function paintMode() {
@@ -358,6 +357,8 @@
       }
       if (displayMode === "always") {
         await showFromEdge(true);
+      } else {
+        setTimeout(hideToEdge, 800);
       }
     }
 
@@ -384,12 +385,27 @@
     $("btnMode") && $("btnMode").addEventListener("click", toggleMode);
     $("btnMode2") && $("btnMode2").addEventListener("click", toggleMode);
 
+    let hoverCount = 0;
+    let lastHoverTs = Date.now();
     document.getElementById("shell").addEventListener("mouseenter", () => {
+      hoverCount += 1;
+      lastHoverTs = Date.now();
       if (displayMode === "edge") showFromEdge(true);
     });
     document.getElementById("shell").addEventListener("mouseleave", () => {
-      if (displayMode === "edge" && !expanded) setTimeout(hideToEdge, 900);
+      hoverCount = Math.max(0, hoverCount - 1);
     });
+
+    setInterval(() => {
+      if (displayMode !== "edge") return;
+      const over = hoverCount > 0;
+      if (over) {
+        if (edgeHidden) showFromEdge(true);
+        lastHoverTs = Date.now();
+      } else if (!expanded && Date.now() - lastHoverTs > 900) {
+        hideToEdge();
+      }
+    }, 250);
 
     async function init() {
       if (window.shixu) {
