@@ -84,7 +84,8 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    # 任一平台成功即发布，避免 mac 失败卡住 Windows 安装包
+    if: startsWith(github.ref, 'refs/tags/') && (needs.build-windows.result == 'success' || needs.build-macos.result == 'success')
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     permissions:
@@ -101,3 +102,4 @@ jobs:
           files: |
             dist/**
           generate_release_notes: true
+          fail_on_unmatched_files: false
