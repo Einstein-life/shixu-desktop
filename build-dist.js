@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 const path = require('path');
 const fs = require('fs');
-const { build, Platform } = require('electron-builder');
+const { build, Platform, Arch } = require('electron-builder');
 
 process.env.ELECTRON_MIRROR = process.env.ELECTRON_MIRROR || 'https://npmmirror.com/mirrors/electron/';
 process.env.ELECTRON_BUILDER_BINARIES_MIRROR =
@@ -31,7 +31,7 @@ function signingConfig() {
 // 不要使用不完整的 node_modules/electron/dist 作为 electronDist
 build({
   projectDir: root,
-  targets: Platform.WINDOWS.createTarget(['nsis'], 'x64'),
+  targets: Platform.WINDOWS.createTarget(['nsis'], Arch.x64),
   config: {
     appId: 'app.shixu.desktop',
     productName: 'Shixu Desktop',

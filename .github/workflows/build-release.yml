@@ -88,8 +88,8 @@ jobs:
           if-no-files-found: error
 
   release:
-    # 任一平台成功即发布，避免 mac 失败卡住 Windows 安装包
-    if: startsWith(github.ref, 'refs/tags/') && (needs.build-windows.result == 'success' || needs.build-macos.result == 'success')
+    # 即使一个平台失败，只要另一个成功也发布
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/') && (needs.build-windows.result == 'success' || needs.build-macos.result == 'success') }}
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     permissions:
