@@ -1,7 +1,7 @@
 {
   "name": "shixu",
   "productName": "时序调度",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "时序 · 生信调度与项目进度（桌面版）",
   "main": "electron/main.js",
   "author": "时序",
@@ -52,11 +52,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "assets/icon.icns",
