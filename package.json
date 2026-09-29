@@ -1,7 +1,7 @@
 {
   "name": "shixu",
   "productName": "时序调度",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "时序 · 生信调度与项目进度（桌面版）",
   "main": "electron/main.js",
   "author": "时序",
