@@ -148,8 +148,16 @@ function createDockWindow() {
     }
   });
   dockWindow.setAlwaysOnTop(true, 'screen-saver');
+  dockWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   dockWindow.loadFile(path.join(__dirname, '..', 'renderer', 'dock.html'));
+  // 周期性再次置顶，避免被其他全屏/置顶窗口盖住
+  dockWindow._topmostTimer = setInterval(() => {
+    if (dockWindow && !dockWindow.isDestroyed()) {
+      dockWindow.setAlwaysOnTop(true, 'screen-saver');
+    }
+  }, 2000);
   dockWindow.on('closed', () => {
+    if (dockWindow && dockWindow._topmostTimer) clearInterval(dockWindow._topmostTimer);
     dockWindow = null;
   });
 }
@@ -317,6 +325,48 @@ ipcMain.handle('shixu:dock-set-size', (_e, expanded) => {
   if (nx + b.width > wa.x + wa.width) nx = wa.x + wa.width - b.width - 8;
   if (ny + b.height > wa.y + wa.height) ny = wa.y + wa.height - b.height - 8;
   dockWindow.setPosition(Math.max(8, nx), Math.max(8, ny));
+  dockWindow.setAlwaysOnTop(true, 'screen-saver');
+  return true;
+});
+
+ipcMain.handle('shixu:dock-display-mode', (_e, mode) => {
+  const m = mode === 'edge' ? 'edge' : 'always';
+  saveSettings({ dockDisplayMode: m });
+  return { displayMode: m };
+});
+
+ipcMain.handle('shixu:dock-get-display-mode', () => {
+  return { displayMode: loadSettings().dockDisplayMode === 'edge' ? 'edge' : 'always' };
+});
+
+ipcMain.handle('shixu:dock-set-ball', (_e, on) => {
+  if (!dockWindow) return false;
+  const display = screen.getDisplayMatching(dockWindow.getBounds());
+  const wa = display.workArea;
+  const b = dockWindow.getBounds();
+  if (on) {
+    dockWindow.setContentSize(40, 40);
+    const nb = dockWindow.getBounds();
+    dockWindow.setPosition(wa.x + wa.width - nb.width - 4, b.y);
+  } else {
+    dockWindow.setContentSize(340, 200);
+  }
+  dockWindow.setAlwaysOnTop(true, 'screen-saver');
+  return true;
+});
+
+ipcMain.handle('shixu:dock-slide', (_e, payload) => {
+  if (!dockWindow) return false;
+  const mode = (payload && payload.mode) || 'show';
+  const display = screen.getDisplayMatching(dockWindow.getBounds());
+  const wa = display.workArea;
+  const b = dockWindow.getBounds();
+  if (mode === 'hide-edge') {
+    dockWindow.setPosition(wa.x + wa.width - 40, b.y);
+  } else if (mode === 'show' && payload && Number.isFinite(payload.x) && Number.isFinite(payload.y)) {
+    dockWindow.setPosition(Math.round(payload.x), Math.round(payload.y));
+  }
+  dockWindow.setAlwaysOnTop(true, 'screen-saver');
   return true;
 });
 
