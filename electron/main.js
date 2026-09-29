@@ -312,20 +312,59 @@ ipcMain.handle('shixu:reveal-data', () => {
   return { path: p };
 });
 
+/** 多显示器 / DPI：优先用悬浮窗所在屏幕，否则鼠标所在屏，最后主屏 */
+function layoutDisplay() {
+  try {
+    if (dockWindow && !dockWindow.isDestroyed()) {
+      return screen.getDisplayMatching(dockWindow.getBounds());
+    }
+  } catch (_) {}
+  try {
+    return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  } catch (_) {}
+  return screen.getPrimaryDisplay();
+}
+
+function clampToWorkArea(width, height, x, y, display) {
+  const wa = display.workArea;
+  const w = Math.max(40, Math.min(Math.round(width), wa.width));
+  const h = Math.max(40, Math.min(Math.round(height), wa.height));
+  const maxX = wa.x + wa.width - w;
+  const maxY = wa.y + wa.height - h;
+  return {
+    x: Math.max(wa.x, Math.min(Math.round(x), maxX)),
+    y: Math.max(wa.y, Math.min(Math.round(y), maxY)),
+    width: w,
+    height: h
+  };
+}
+
+function applyDockBounds(width, height, x, y) {
+  if (!dockWindow || dockWindow.isDestroyed()) return null;
+  const display = layoutDisplay();
+  const bounds = clampToWorkArea(width, height, x, y, display);
+  // 一次 setBounds，避免 setContentSize 后定位错位、被任务栏裁切
+  dockWindow.setBounds(bounds);
+  dockWindow.setAlwaysOnTop(true, 'screen-saver');
+  return bounds;
+}
+
+function dockCurrentY(height) {
+  const b = dockWindow && !dockWindow.isDestroyed() ? dockWindow.getBounds() : null;
+  const display = layoutDisplay();
+  const wa = display.workArea;
+  if (b && b.height <= height + 8) {
+    return b.y;
+  }
+  return wa.y + Math.floor(wa.height * 0.22);
+}
+
 ipcMain.handle('shixu:dock-set-size', (_e, expanded) => {
   if (!dockWindow) return false;
-  const [x, y] = dockWindow.getPosition();
-  if (expanded) dockWindow.setContentSize(420, 660);
-  else dockWindow.setContentSize(340, 200);
-  const display = screen.getDisplayMatching(dockWindow.getBounds());
-  const wa = display.workArea;
   const b = dockWindow.getBounds();
-  let nx = x;
-  let ny = y;
-  if (nx + b.width > wa.x + wa.width) nx = wa.x + wa.width - b.width - 8;
-  if (ny + b.height > wa.y + wa.height) ny = wa.y + wa.height - b.height - 8;
-  dockWindow.setPosition(Math.max(8, nx), Math.max(8, ny));
-  dockWindow.setAlwaysOnTop(true, 'screen-saver');
+  const width = expanded ? 420 : 340;
+  const height = expanded ? 660 : 200;
+  applyDockBounds(width, height, b.x, dockCurrentY(height));
   return true;
 });
 
@@ -341,32 +380,37 @@ ipcMain.handle('shixu:dock-get-display-mode', () => {
 
 ipcMain.handle('shixu:dock-set-ball', (_e, on) => {
   if (!dockWindow) return false;
-  const display = screen.getDisplayMatching(dockWindow.getBounds());
+  const display = layoutDisplay();
   const wa = display.workArea;
   const b = dockWindow.getBounds();
   if (on) {
-    dockWindow.setContentSize(40, 40);
-    const nb = dockWindow.getBounds();
-    dockWindow.setPosition(wa.x + wa.width - nb.width - 4, b.y);
+    // 篮球热区 56x56，完全落在当前屏工作区内
+    const size = 56;
+    applyDockBounds(size, size, wa.x + wa.width - size - 4, dockCurrentY(size));
   } else {
-    dockWindow.setContentSize(340, 200);
+    const width = 340;
+    const height = 200;
+    applyDockBounds(width, height, b.x, dockCurrentY(height));
   }
-  dockWindow.setAlwaysOnTop(true, 'screen-saver');
   return true;
 });
 
 ipcMain.handle('shixu:dock-slide', (_e, payload) => {
   if (!dockWindow) return false;
   const mode = (payload && payload.mode) || 'show';
-  const display = screen.getDisplayMatching(dockWindow.getBounds());
+  const display = layoutDisplay();
   const wa = display.workArea;
   const b = dockWindow.getBounds();
   if (mode === 'hide-edge') {
-    dockWindow.setPosition(wa.x + wa.width - 40, b.y);
-  } else if (mode === 'show' && payload && Number.isFinite(payload.x) && Number.isFinite(payload.y)) {
-    dockWindow.setPosition(Math.round(payload.x), Math.round(payload.y));
+    const size = 56;
+    applyDockBounds(size, size, wa.x + wa.width - size - 4, dockCurrentY(size));
+  } else if (mode === 'show') {
+    const width = 340;
+    const height = 200;
+    const x = Number.isFinite(payload && payload.x) ? payload.x : wa.x + wa.width - width - 16;
+    const y = Number.isFinite(payload && payload.y) ? payload.y : dockCurrentY(height);
+    applyDockBounds(width, height, x, y);
   }
-  dockWindow.setAlwaysOnTop(true, 'screen-saver');
   return true;
 });
 
