@@ -1,5 +1,5 @@
-# Generate macOS .icns from assets/icon.png (run on macOS)
-# Usage: node scripts/make-icns.js
+// Generate macOS .icns from assets/icon.png (run on macOS)
+// Usage: node scripts/make-icns.js
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
