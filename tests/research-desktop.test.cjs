@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const R=require('../renderer/research-core.js');
+const localPath=process.platform==='win32'?'D:\\analysis\\run-script.bat':'/Users/researcher/analysis/run-script.sh';
 
 function harness(artifacts,exists=true) {
   const handlers={},calls=[];
@@ -18,10 +19,10 @@ function harness(artifacts,exists=true) {
 }
 
 test('desktop artifact action reveals saved local paths without executing linked files',async()=>{
-  const h=harness([{id:'a',path:'D:\\analysis\\run-script.bat'}]);
+  const h=harness([{id:'a',path:localPath}]);
   const result=await h.run(h.event,'p','a');
   assert.equal(result.ok,true);
-  assert.deepEqual(h.calls,[['reveal','D:\\analysis\\run-script.bat']]);
+  assert.deepEqual(h.calls,[['reveal',localPath]]);
 });
 
 test('desktop action opens saved web reports and reports missing local files',async()=>{
@@ -41,9 +42,9 @@ test('artifact action rejects untrusted frames, unknown references and unsupport
 });
 
 test('experiment files resolve saved IDs, reveal local files and open web reports',async()=>{
-  const local=harness([{id:'a',path:'D:\\results\\process.bat'}]);
+  const local=harness([{id:'a',path:localPath}]);
   assert.equal((await local.experiment(local.event,'e','a')).ok,true);
-  assert.deepEqual(local.calls,[['reveal','D:\\results\\process.bat']]);
+  assert.deepEqual(local.calls,[['reveal',localPath]]);
   const web=harness([{id:'a',path:'https://example.org/assay.csv'}]);
   assert.equal((await web.experiment(web.event,'e','a')).ok,true);
   assert.deepEqual(web.calls,[['web','https://example.org/assay.csv']]);

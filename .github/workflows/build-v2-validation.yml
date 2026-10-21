@@ -51,6 +51,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Portable startup smoke failed' }
       - run: npm run checksums -- win
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: shixu-v2-windows
           if-no-files-found: error
@@ -94,6 +95,7 @@ jobs:
           for file in mac/*.zip; do unzip -tq "$file"; done
       - run: npm run checksums -- mac
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: shixu-v2-macos
           if-no-files-found: error
