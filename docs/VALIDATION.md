@@ -2,6 +2,17 @@
 
 Research workspace update validated on 2026-10-21 (Asia/Shanghai).
 
+## Installer validation (2026-10-21)
+
+- Build branch: [`codex/build-v2-installers`](https://github.com/Einstein-life/shixu-desktop/tree/codex/build-v2-installers), commit `d0291cefd8b98d2a7dc5ff453da422189123700f`. The main branch was not changed and no release was published.
+- GitHub Actions run [39549730875](https://github.com/Einstein-life/shixu-desktop/actions/runs/39549730875) completed successfully for Windows and macOS. Both platforms passed JavaScript checks and all 54 tests. The earlier successful run had not established macOS signature validity; its artifacts are superseded by this run.
+- Windows output: x64 NSIS installer built on Windows Server 2022. Silent installation, installed-source verification, isolated startup and uninstallation passed. The app survived for five seconds and created version 4 data with six example projects, 18 tasks and six experiments. The installer is unsigned; Windows may show an unknown-publisher warning. Installer behavior on Windows 10/11 still needs an interactive acceptance pass.
+- macOS output: x64 and arm64 DMG and ZIP archives. Both app architectures and their embedded source archives were checked. Each app passed strict deep code-signature validation; both DMGs were verified, mounted read-only and their contained apps passed signature validation. Both ZIPs passed archive integrity checks. The arm64 app passed native startup and isolated first-run persistence on the macOS runner. Intel native execution was not tested.
+- The macOS signing hook seals the app and nested components with an ad-hoc signature before archive generation, fixing stale Electron bundle signatures. This is not Developer ID signing or notarization; normal macOS distribution approval remains a separate release requirement. The signature checks remain mandatory.
+- SHA-256 manifests are included next to the downloaded artifacts. The package version remains `2.0.0-beta.1`; the user-facing product name remains **Shixu · Research & Lab Workflows** without a version suffix.
+
+The checks establish successful builds, archive integrity, packaged source inclusion and first-run persistence in CI. They do not establish byte-for-byte reproducible builds or replace a live UI pass for display configurations, native notifications, login startup, macOS download approval, or upgrading an existing installation. No real research data was used in the CI smoke checks.
+
 ## English plant examples and floating panel expansion (2026-10-21)
 
 - Added English-loadable maize heat/pollen, wheat leaf-rust and soybean nodulation projects. Existing Chinese samples remain unchanged; the action can be repeated safely without overwriting edited samples. The original three plant examples remain in the initial set.
@@ -65,7 +76,7 @@ The entries below describe the earlier 2026-10-19 validation baseline.
 - Package/lock metadata: matching name and version.
 - Original Windows/macOS main process, index, and dock hashes match their pre-development values.
 
-## Not yet validated
+## Historical limits from the initial implementation (see installer validation above for updates)
 
 - Native desktop rendering and end-to-end click flows. The existing Electron binary exited before a targetable window appeared in this execution environment. The existing npm Electron path file also contains a trailing newline; the new launcher trims it. These checks do not prove native startup now succeeds on a user's machine.
 - A local-file preview was rejected by the in-app browser's protocol policy. No screenshot or browser visual pass is claimed.
