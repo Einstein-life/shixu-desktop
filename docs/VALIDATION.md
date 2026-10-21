@@ -2,6 +2,16 @@
 
 Research workspace update validated on 2026-10-21 (Asia/Shanghai).
 
+## Release 1.2.1
+
+The requested public version is `1.2.1`, based on the latest English-first research-workspace implementation. Package metadata, installer names and the public release tag use the same version. The workspace directory and existing data location are retained. Windows publisher signing and macOS Developer ID signing/notarization are not configured.
+
+## Beta.3 label update (2026-10-21)
+
+- English example buttons now use the shorter **Load examples** label. Chinese uses **载入示例**. Behavior is unchanged: a fresh workspace is English and empty until the user clicks the button.
+- CI run [39565016572](https://github.com/Einstein-life/shixu-desktop/actions/runs/39565016572), source commit `5af49ba339738c12ab074af450684b43ad85f96d`, completed successfully for Windows and macOS. Both platforms passed 58 tests, empty first-run checks, package verification, installation/startup/uninstallation or macOS signature/archive checks.
+- Beta.3 artifacts are in `win/` and `mac/`; their SHA-256 manifests were verified after download. The user-facing software name remains unchanged.
+
 ## Beta.2 English-first defaults (2026-10-21)
 
 - New installs use the English UI and an empty workspace. **Load examples** adds six English plant projects, 18 linked tasks and six experiments only after a user click. Switching the interface to Chinese preserves English example content.

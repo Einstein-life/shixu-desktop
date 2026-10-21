@@ -122,3 +122,44 @@ jobs:
             mac/SHA256SUMS.txt
             mac/package-verification.json
             mac/startup-smoke.json
+
+  draft-release-1-2-1:
+    needs: [windows, macos]
+    if: github.ref == 'refs/heads/codex/build-v2-installers'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check requested release version
+        id: version
+        run: |
+          if [ "$(node -p "require('./package.json').version")" = '1.2.1' ]; then
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.version.outputs.enabled == 'true'
+        with:
+          name: shixu-v2-windows
+          path: artifacts/windows
+      - uses: actions/download-artifact@v4
+        if: steps.version.outputs.enabled == 'true'
+        with:
+          name: shixu-v2-macos
+          path: artifacts/macos
+      - name: Verify release assets and assemble checksums
+        if: steps.version.outputs.enabled == 'true'
+        run: node scripts/prepare-release.cjs
+      - name: Create draft with verified assets
+        if: steps.version.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v1.2.1 --repo "$GITHUB_REPOSITORY" --json isDraft,targetCommitish > existing-release.json 2>/dev/null; then
+            node -e "const r=require('./existing-release.json');if(!r.isDraft||r.targetCommitish!==process.env.GITHUB_SHA)throw Error('An incompatible release already exists; refusing to replace it')"
+            gh release upload v1.2.1 release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create v1.2.1 release-assets/* --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title 'Shixu Desktop v1.2.1' --notes-file docs/RELEASE-v1.2.1.md
+          fi

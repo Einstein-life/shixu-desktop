@@ -50,4 +50,4 @@ npm run dist:mac
 
 Package macOS releases on macOS. Read [the wet-lab improvement plan](docs/ROADMAP-ZH-CN.md) for the user-needs summary, interaction rules, proposed phases, and adoption measures.
 
-Installer output is written to `win/` and `mac/`. The Windows package is an x64 NSIS installer; macOS provides separate Intel (`x64`) and Apple Silicon (`arm64`) DMG/ZIP files. The current package version is `2.0.0-beta.3`. See [validation evidence](docs/VALIDATION.md) and [the installation acceptance guide](docs/INSTALLER-ACCEPTANCE-ZH-CN.md). Windows publisher signing and macOS Developer ID signing/notarization are not configured; macOS test artifacts use valid ad-hoc signatures.
+Installer output is written to `win/` and `mac/`. The Windows package is an x64 NSIS installer; macOS provides separate Intel (`x64`) and Apple Silicon (`arm64`) DMG/ZIP files. The release version is `1.2.1`. See [validation evidence](docs/VALIDATION.md) and [the installation acceptance guide](docs/INSTALLER-ACCEPTANCE-ZH-CN.md). Windows publisher signing and macOS Developer ID signing/notarization are not configured; macOS builds use valid ad-hoc signatures.

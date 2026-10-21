@@ -1,24 +1,24 @@
 # 时序安装包验证指南
 
-包版本：2.0.0-beta.3。新安装默认显示英文界面与空白工作区；需点击 **Load examples / 载入示例** 才载入英文植物示例。软件界面名称为“时序 · 科研调度与实验执行”，不含版本后缀。
+包版本：1.2.1。新安装默认显示英文界面与空白工作区；需点击 **Load examples / 载入示例** 才载入英文植物示例。软件界面名称为“时序 · 科研调度与实验执行”，不含版本后缀。
 
 ## 安装包选择
 
 | 系统 | 文件 | 使用方式 |
 | --- | --- | --- |
-| Windows 10/11，64 位 Intel/AMD | win/Shixu-Desktop-2.0.0-beta.3-win-x64.exe | 运行安装向导，选择用户目录安装 |
-| Mac，Apple Silicon（M 系列） | mac/Shixu-Desktop-2.0.0-beta.3-mac-arm64.dmg | 打开镜像，将应用拖至 Applications |
-| Mac，Intel | mac/Shixu-Desktop-2.0.0-beta.3-mac-x64.dmg | 打开镜像，将应用拖至 Applications |
+| Windows 10/11，64 位 Intel/AMD | win/Shixu-Desktop-1.2.1-win-x64.exe | 运行安装向导，选择用户目录安装 |
+| Mac，Apple Silicon（M 系列） | mac/Shixu-Desktop-1.2.1-mac-arm64.dmg | 打开镜像，将应用拖至 Applications |
+| Mac，Intel | mac/Shixu-Desktop-1.2.1-mac-x64.dmg | 打开镜像，将应用拖至 Applications |
 
 mac 目录还提供对应架构 ZIP，供直接解压测试。不要同时运行两个副本。
 
-这是可供内部验证的构建包，版本尚未转为稳定版。Windows 未配置发布者证书；macOS 使用有效 ad-hoc 签名，尚未经过 Developer ID 签名和 Apple 公证。系统可能提示未知发布者或要求批准。请由测试者根据系统正式提示确认；不要关闭系统安全保护。
+Windows 未配置发布者证书；macOS 使用有效 ad-hoc 签名，尚未经过 Developer ID 签名和 Apple 公证。系统可能提示未知发布者或要求批准，请根据系统正式提示确认，不要关闭系统安全保护。
 
 ## 已通过的自动验证
 
-构建记录：https://github.com/Einstein-life/shixu-desktop/actions/runs/39560102579
+本版本构建地址、源码提交和校验记录见 Release 附件 `BUILD-VALIDATION.json`。
 
-源码提交：3c5625979c9c16d2a1d5b091f007907c5437a308。
+发布说明：https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.2.1
 
 - Windows 与 macOS 均通过 58 项测试和脚本检查。
 - 包内 19 个关键源码文件与构建源码一致，版本入口一致，未发现受检查的用户数据文件。
