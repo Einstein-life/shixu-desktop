@@ -1,7 +1,7 @@
 {
   "name": "shixu-desktop-v2",
   "productName": "Shixu Desktop",
-  "version": "2.0.0-beta.2",
+  "version": "2.0.0-beta.3",
   "description": "Local-first research scheduling and wet-lab experiment workflows",
   "main": "electron/main.js",
   "author": "Einstein-life",

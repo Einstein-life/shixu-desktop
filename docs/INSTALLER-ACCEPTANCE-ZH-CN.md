@@ -1,14 +1,14 @@
 # 时序安装包验证指南
 
-包版本：2.0.0-beta.2。新安装默认显示英文界面与空白工作区；需点击按钮才载入英文植物示例。软件界面名称为“时序 · 科研调度与实验执行”，不含版本后缀。
+包版本：2.0.0-beta.3。新安装默认显示英文界面与空白工作区；需点击 **Load examples / 载入示例** 才载入英文植物示例。软件界面名称为“时序 · 科研调度与实验执行”，不含版本后缀。
 
 ## 安装包选择
 
 | 系统 | 文件 | 使用方式 |
 | --- | --- | --- |
-| Windows 10/11，64 位 Intel/AMD | win/Shixu-Desktop-2.0.0-beta.2-win-x64.exe | 运行安装向导，选择用户目录安装 |
-| Mac，Apple Silicon（M 系列） | mac/Shixu-Desktop-2.0.0-beta.2-mac-arm64.dmg | 打开镜像，将应用拖至 Applications |
-| Mac，Intel | mac/Shixu-Desktop-2.0.0-beta.2-mac-x64.dmg | 打开镜像，将应用拖至 Applications |
+| Windows 10/11，64 位 Intel/AMD | win/Shixu-Desktop-2.0.0-beta.3-win-x64.exe | 运行安装向导，选择用户目录安装 |
+| Mac，Apple Silicon（M 系列） | mac/Shixu-Desktop-2.0.0-beta.3-mac-arm64.dmg | 打开镜像，将应用拖至 Applications |
+| Mac，Intel | mac/Shixu-Desktop-2.0.0-beta.3-mac-x64.dmg | 打开镜像，将应用拖至 Applications |
 
 mac 目录还提供对应架构 ZIP，供直接解压测试。不要同时运行两个副本。
 

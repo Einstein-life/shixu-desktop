@@ -4,7 +4,7 @@ Research workspace update validated on 2026-10-21 (Asia/Shanghai).
 
 ## Beta.2 English-first defaults (2026-10-21)
 
-- New installs use the English UI and an empty workspace. **Load six English plant examples** adds six English plant projects, 18 linked tasks and six experiments only after a user click. Switching the interface to Chinese preserves English example content.
+- New installs use the English UI and an empty workspace. **Load examples** adds six English plant projects, 18 linked tasks and six experiments only after a user click. Switching the interface to Chinese preserves English example content.
 - Existing data and saved language choices are retained. Loading fills missing English example studies without overwriting edited Chinese or English records.
 - All 58 tests and script checks passed locally. Browser acceptance confirmed the empty English first view, six English studies after a click, and Chinese UI selection without altering study text.
 - The explicit `?demo=1` preview still seeds isolated English demo data. Normal desktop and browser workspaces never seed example data automatically.

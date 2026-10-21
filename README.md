@@ -14,7 +14,7 @@ npm start
 
 Select **English** or **简体中文** in the main window. The floating panel and tray menu use the same saved language.
 
-The interface defaults to English and a new research workspace starts empty. Click **Projects → Load six English plant examples** to add six fictional plant studies, 18 linked tasks and six experiments: Arabidopsis salt response, rice drought methylation/expression integration, tomato rhizosphere response to low phosphorus, maize heat stress, wheat leaf rust, and soybean nodulation. Switching the interface to Chinese does not change these English examples. Loading preserves existing records and edits. All results are fictional, paths are placeholders, and timers never start automatically. See the [plant example guide](docs/PLANT-EXAMPLES-ZH-CN.md).
+The interface defaults to English and a new research workspace starts empty. Click **Projects → Load examples** to add six fictional plant studies, 18 linked tasks and six experiments: Arabidopsis salt response, rice drought methylation/expression integration, tomato rhizosphere response to low phosphorus, maize heat stress, wheat leaf rust, and soybean nodulation. Switching the interface to Chinese does not change these English examples. Loading preserves existing records and edits. All results are fictional, paths are placeholders, and timers never start automatically. See the [plant example guide](docs/PLANT-EXAMPLES-ZH-CN.md).
 
 To preview the main window with separate sample data, open `renderer/index.html?demo=1`. Demo edits persist in their own browser store. The optional planning scaffolds are editable examples; use your laboratory's current approved SOP and verify all units and steps before use.
 
