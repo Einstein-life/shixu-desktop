@@ -8,7 +8,8 @@ Research workspace update validated on 2026-10-21 (Asia/Shanghai).
 - Existing data and saved language choices are retained. Loading fills missing English example studies without overwriting edited Chinese or English records.
 - All 58 tests and script checks passed locally. Browser acceptance confirmed the empty English first view, six English studies after a click, and Chinese UI selection without altering study text.
 - The explicit `?demo=1` preview still seeds isolated English demo data. Normal desktop and browser workspaces never seed example data automatically.
-- Package build evidence will be added after the beta.2 CI run. The beta.1 installers described below predate this behavior.
+- CI run [39560102579](https://github.com/Einstein-life/shixu-desktop/actions/runs/39560102579), source commit `3c5625979c9c16d2a1d5b091f007907c5437a308`, passed on Windows and macOS. Both platforms passed 58 tests and package-source verification. Windows completed actual installation/startup/uninstallation; macOS passed strict deep ad-hoc signature checks for both architectures and apps mounted from both DMGs, DMG/ZIP integrity, and native arm64 startup. Fresh startup reports recorded zero projects, tasks and experiments. Intel native execution and interactive OS acceptance remain manual checks.
+- Preview: [English plant projects after explicit loading](english-first-beta2.png). The beta.1 installers described below predate this behavior.
 
 ## Beta.1 installer validation (2026-10-21)
 
