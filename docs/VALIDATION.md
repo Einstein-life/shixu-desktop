@@ -1,0 +1,76 @@
+# 2.0.0-beta.1 validation
+
+Research workspace update validated on 2026-10-21 (Asia/Shanghai).
+
+## English plant examples and floating panel expansion (2026-10-21)
+
+- Added English-loadable maize heat/pollen, wheat leaf-rust and soybean nodulation projects. Existing Chinese samples remain unchanged; the action can be repeated safely without overwriting edited samples. The original three plant examples remain in the initial set.
+- Floating-panel resize/reveal actions now run through a serialized geometry controller. The native handler also remembers expanded state so late edge-hide/hover events cannot apply ball or compact-panel bounds on top of a full panel. Cards scroll within the full panel instead of shrinking its flex container.
+- `npm test`: 54/54 passed. Seven dock-layout regressions cover async edge reveal before resize, renderer hover/mode events, hide/show/expand races, late hide requests, small/negative-coordinate displays, and error recovery/rapid collapse. Example tests cover English additive loading and evidence links.
+- English main and dock pages regenerated. English browser acceptance showed all six projects and the English-load button. Floating-panel geometry was validated through the native-handler/controller tests; an interactive Electron-window check was not available in this pass.
+
+## Initial plant research examples (2026-10-20)
+
+- New desktop/browser stores persist three localized projects, nine linked tasks and three experiments once. Existing, migrated, intentionally empty and corrupt/recovery stores are not replaced with examples. Existing users can add the examples from Projects; stable IDs prevent duplicate records and preserve edits.
+- Examples cover Arabidopsis salt response with RNA-seq/qPCR, rice drought methylation/expression integration, and tomato rhizosphere/low-phosphorus amplicon analysis. Each has question, workflow, evidence, limitations, next actions, experimental records and placeholder file references. No sample timers or compute jobs are started. Demonstration completion states and observations are explicitly fictional.
+- Browser acceptance: Chinese first-load projects and linked experiments; action schedule and completed experiment display; idempotent loading; editing a research question, saving, reloading and loading examples again without losing the edit; a separate English demo store with entirely English sample content; fresh Chinese first-load rendering. Preview: [plant projects](plant-examples-zh.png).
+- `npm test`: 45/45 passed, including seven example tests for source integrity, action links, timer inactivity, bilingual data, stable IDs, round trips, additive loading, first-run persistence, empty/legacy/corrupt desktop stores and isolated demo browser storage. Desktop first-run tests use an in-memory filesystem; packaged/native launch was not exercised.
+- English resources regenerated. Temporary preview servers and browser tabs were closed after acceptance. User desktop data was not modified.
+
+### English additions (2026-10-21)
+
+- Added a separate English-load action for maize heat stress/pollen viability, wheat leaf-rust interaction and soybean nodulation/rhizosphere studies. It creates separate English records alongside Chinese examples, leaves edited records intact, and skips these additions when the same English examples already exist.
+- The default set now contains six plant projects, 18 linked tasks and six experiment records. Content remains explicitly fictional; all experiment timers are idle.
+- `npm test`: 52/52 passed, including English additions after a Chinese first launch, independent project/experiment evidence links, and no duplicates on repeat. The browser preview previously verified the English six-project set; after the last small English-add button change, that action was validated by the unit test because the computer-use connection was unavailable.
+
+## Floating panel edge expansion fix (2026-10-21)
+
+- Reproducible failure: asynchronous edge reveal/hover geometry calls could arrive after the expand click and reset the dock to compact dimensions. Edge-mode mouse entry also forced a compact restore. A flex item without a zero minimum could further constrain scrolling content.
+- Serialized resize/show/hide actions, restore the expanded native bounds after edge reveal, ignore late edge/hover ball requests while the native window is expanded, and let cards scroll inside the panel.
+- Five regression tests simulate delayed native IPC and event races, late hide requests, rapid expand/collapse, small monitors and negative-coordinate displays. The native window was not interactively available for clicking through this turn; therefore this result is covered by renderer-controller and Electron geometry handler tests, not a live OS visual confirmation.
+
+## Research evidence chain (2026-10-20)
+
+- Workspaces and both Markdown exports follow question → workflow → evidence → conclusion → next step. Findings, limitations and actions have separate records and selectable source references.
+- Browser acceptance on an isolated preview origin: create a Chinese RNA-seq project and linked experiment; save notes and a result URL; follow experiment → project and project → experiment links; add a sourced finding, limitation and next action; save/reload; update original experiment notes and verify live project evidence; create an action task twice and verify only one task; generate a weekly report; download and inspect the project Markdown; switch to English and check the five-stage form and experiment-result editor while preserving authored Chinese records.
+- `npm test`: 38/38 passed. Coverage includes live deduplicated links, experiment files, source deletion/reassignment warnings, preservation of timers and original conclusions, JSON round trips, concurrent window merges, malformed import rejection, bilingual exports and ordered stages. Experiment file handler tests verify saved IDs, local-file reveal, web links, missing files and rejection of unsupported targets and untrusted frames with controlled Electron-shell mocks.
+- Native Electron file pickers, operating-system file opening and packaged desktop execution were not exercised in this update. Browser acceptance establishes the renderer flows; mocked handler tests do not establish native integration success. Supplementary cross-project experiment association and missing-source conditions were covered by core tests; the browser flow used a directly assigned experiment.
+- Validation data is marked as synthetic and stored only in the isolated preview browser; no scientific findings were asserted and no user desktop data was edited.
+- Browser preview: [linked experiment evidence](research-evidence-zh.png). No browser console errors were captured in the final Chinese evidence view. English resources were regenerated and the JavaScript/HTML check passed.
+
+## Launch-at-login fix (2026-10-20)
+
+- Windows login-item writes and reads use the same executable and argument list. Development launches include the absolute project path; packaged launches use the installed executable without development arguments.
+- System errors propagate to the interface; persisted preferences mirror the verified OS state. Startup no longer reapplies a saved preference over a setting changed in the OS.
+- Chinese and English buttons show a pending state, prevent concurrent toggles, reread after failures, and distinguish system-disabled or macOS approval states from success. Returning focus refreshes the status.
+- English pages regenerated. All 30 tests passed, including 8 regression tests for startup options, failed/ignored writes, Windows startup approval, macOS approval, bilingual controls, repeated clicks, persisted readback and unknown initial state.
+- Native registry writes and a reboot/login cycle were not exercised. Tests use controlled Electron API responses and do not establish OS login execution.
+
+## Research workspace update
+
+- English resources regenerated; shared research modules load in both main pages and the floating panel.
+- Browser checks on an isolated local preview origin: create English and Chinese projects with RNA-seq workflows; record QC status, notes, references and a step-linked file; save and reload; create an analysis task; include findings and result references in a weekly summary; download a research plan draft.
+- The Chinese form was also saved with the optional reproducibility section collapsed, then reopened to verify notes were preserved.
+- Browser screenshot: [research workspace](research-workspace-zh.jpg). The preview used test data only, separate from the desktop data directory.
+- `npm run check` and all 22 automated tests passed. These include independent workflow templates, research migration, JSON round trips, record/proposal exports, preservation during floating-panel edits, malformed research imports and artifact target classification. Desktop handler tests use isolated Electron-shell mocks to check local-file reveal, web reports, missing files and rejected targets/frames.
+- Native file/folder pickers and operating-system file-manager/browser integration have not been exercised in a running Electron window. Handler tests do not establish native integration success.
+
+The entries below describe the earlier 2026-10-19 validation baseline.
+
+## Passed
+
+- `npm run localize`: generated English main and dock pages, and the translation resource.
+- `npm run check`: parsed JavaScript in the main process, preload, shared modules, test scripts, and inline HTML scripts; checked linked local JavaScript/CSS files exist.
+- `npm test`: 11 tests passed. Covers legacy data migration, preparation gate, timer restart semantics and overdue states, parallel-work window with return buffer, attention to overdue/hands-on work, independent field merges, deletion versus concurrent edit, dilution, master mix, malformed import rejection, and English labels preserving user-authored text.
+- Package/lock metadata: matching name and version.
+- Original Windows/macOS main process, index, and dock hashes match their pre-development values.
+
+## Not yet validated
+
+- Native desktop rendering and end-to-end click flows. The existing Electron binary exited before a targetable window appeared in this execution environment. The existing npm Electron path file also contains a trailing newline; the new launcher trims it. These checks do not prove native startup now succeeds on a user's machine.
+- A local-file preview was rejected by the in-app browser's protocol policy. No screenshot or browser visual pass is claimed.
+- Windows notifications, sleep/resume delivery, tray behavior, login startup, high DPI and multiple displays.
+- macOS native execution, Intel/Apple Silicon packaging, notification permissions, signing, and notarization.
+- Windows installer generation and installed-app upgrade testing.
+
+The i18n test uses an isolated DOM stub. It verifies text behavior, not browser layout. The shared data merge handles independent field edits; changes to the same field or array are last-writer wins and do not yet show a conflict dialog. Experiment history is an editable local record, not an immutable compliance audit trail. Legacy weekly-hour totals are approximate; dated work-log events are a follow-up item.

@@ -1,0 +1,110 @@
+name: Build v2 validation installers
+
+on:
+  push:
+    branches: [codex/build-v2-installers]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-installers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run localize
+      - run: npm run check
+      - run: npm test
+      - run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify packaged source
+        run: npm run verify:package -- "win/win-unpacked/resources/app.asar"
+      - name: Install and check Windows package
+        shell: pwsh
+        run: |
+          $installer=Get-ChildItem win -Filter 'Shixu-Desktop-*-win-x64.exe' | Select-Object -First 1
+          if (!$installer) { throw 'NSIS installer missing' }
+          $installDir=Join-Path $env:RUNNER_TEMP 'shixu-install-check'
+          $install=Start-Process -FilePath $installer.FullName -ArgumentList @('/S',"/D=$installDir") -Wait -PassThru -WindowStyle Hidden
+          if ($install.ExitCode -ne 0) { throw "Installer exit $($install.ExitCode)" }
+          $app=Join-Path $installDir 'Shixu Desktop.exe'
+          if (!(Test-Path -LiteralPath $app)) { throw 'Installed executable missing' }
+          node scripts/smoke-desktop.cjs $app win
+          if ($LASTEXITCODE -ne 0) { throw 'Installed-app startup smoke failed' }
+          node scripts/verify-packages.cjs (Join-Path $installDir 'resources/app.asar')
+          if ($LASTEXITCODE -ne 0) { throw 'Installed source mismatch' }
+          $uninstaller=Get-ChildItem -LiteralPath $installDir -Filter '*Uninstall*.exe' | Select-Object -First 1
+          if ($uninstaller) { Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -WindowStyle Hidden }
+      - run: npm run checksums -- win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shixu-v2-windows
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            win/*.exe
+            win/*.blockmap
+            win/SHA256SUMS.txt
+            win/package-verification.json
+            win/startup-smoke.json
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run localize
+      - run: npm run check
+      - run: npm test
+      - run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify source, signatures and archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          archives=()
+          while IFS= read -r -d '' app; do
+            codesign --verify --deep --strict --verbose=2 "$app"
+            archives+=("$app/Contents/Resources/app.asar")
+            lipo -archs "$app/Contents/MacOS/Shixu Desktop"
+          done < <(find mac -maxdepth 3 -name 'Shixu Desktop.app' -type d -print0)
+          test "${#archives[@]}" -eq 2
+          npm run verify:package -- "${archives[@]}"
+          for file in mac/*.dmg; do hdiutil verify "$file"; done
+          for file in mac/*.zip; do unzip -tq "$file"; done
+          if [ "$(uname -m)" = arm64 ]; then
+            node scripts/smoke-desktop.cjs 'mac/mac-arm64/Shixu Desktop.app/Contents/MacOS/Shixu Desktop' mac
+          else
+            node scripts/smoke-desktop.cjs 'mac/mac/Shixu Desktop.app/Contents/MacOS/Shixu Desktop' mac
+          fi
+      - run: npm run checksums -- mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shixu-v2-macos
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            mac/*.dmg
+            mac/*.zip
+            mac/*.blockmap
+            mac/SHA256SUMS.txt
+            mac/package-verification.json
+            mac/startup-smoke.json

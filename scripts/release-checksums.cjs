@@ -1,0 +1,12 @@
+const fs=require('node:fs');
+const path=require('node:path');
+const crypto=require('node:crypto');
+const root=path.resolve(__dirname,'..');
+const folder=process.argv[2];
+if(!['win','mac'].includes(folder))throw Error('Use win or mac');
+const dir=path.join(root,folder);
+const files=fs.readdirSync(dir).filter(name=>/\.(?:exe|dmg|zip)$/.test(name)&&fs.statSync(path.join(dir,name)).isFile()).sort();
+if(!files.length)throw Error('No installers found in '+folder);
+const lines=files.map(name=>crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,name))).digest('hex')+'  '+name);
+fs.writeFileSync(path.join(dir,'SHA256SUMS.txt'),lines.join('\n')+'\n');
+console.log(lines.join('\n'));

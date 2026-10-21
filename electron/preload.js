@@ -1,10 +1,18 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+let snapshot = null;
+
 contextBridge.exposeInMainWorld('shixu', {
-  load: () => ipcRenderer.invoke('shixu:load'),
-  save: (payload) => ipcRenderer.invoke('shixu:save', payload),
+  load: async () => { const data=await ipcRenderer.invoke('shixu:load'); snapshot=structuredClone(data); return data; },
+  save: (payload) => ipcRenderer.invoke('shixu:save', payload, snapshot),
+  getLocale: () => ipcRenderer.invoke('shixu:get-locale'),
+  setLocale: value => ipcRenderer.invoke('shixu:set-locale',value),
+  onLocale: cb => { const h=(_e,value)=>cb(value);ipcRenderer.on('shixu:locale',h);return ()=>ipcRenderer.removeListener('shixu:locale',h); },
+  openLab: () => ipcRenderer.invoke('shixu:open-lab'),
+  onOpenLab: cb => { const h=()=>cb();ipcRenderer.on('shixu:open-lab',h);return ()=>ipcRenderer.removeListener('shixu:open-lab',h); },
   onUpdate: (cb) => {
     const handler = (_e, data) => {
+      snapshot=structuredClone(data);
       if (typeof cb === 'function') cb(data);
     };
     ipcRenderer.on('shixu:updated', handler);
@@ -15,6 +23,9 @@ contextBridge.exposeInMainWorld('shixu', {
   exportData: (payload) => ipcRenderer.invoke('shixu:export-data', payload),
   importData: () => ipcRenderer.invoke('shixu:import-data'),
   revealData: () => ipcRenderer.invoke('shixu:reveal-data'),
+  pickResearchFiles: kind => ipcRenderer.invoke('shixu:pick-research-files',kind),
+  openResearchArtifact: (projectId,artifactId) => ipcRenderer.invoke('shixu:open-research-artifact',projectId,artifactId),
+  openExperimentArtifact: (experimentId,artifactId) => ipcRenderer.invoke('shixu:open-experiment-artifact',experimentId,artifactId),
   onMenuExport: (cb) => {
     const h = () => cb && cb();
     ipcRenderer.on('shixu:menu-export', h);
