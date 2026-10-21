@@ -1,182 +1,116 @@
-# 时序调度 · Shixu Desktop
+# Shixu Desktop
 
-**Windows / macOS 桌面效率工具**：帮你排清「今天先做什么」，并跟踪长期项目进度。
+[![Latest release](https://img.shields.io/github/v/release/Einstein-life/shixu-desktop?display_name=tag)](https://github.com/Einstein-life/shixu-desktop/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-适合分析、科研、写作、项目等多线工作：任务容易碎片化，既要推进深度工作，又要处理会议、沟通与等待程序出结果的空档。
+**A local-first research workspace connecting wet-lab execution, bioinformatics planning and evidence-based project records.**
 
-[![Release](https://img.shields.io/badge/download-Releases-blue)](../../releases)
-[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+Shixu Desktop helps molecular biology, plant science and bioinformatics researchers keep the context around a study together over time:
 
----
+> **Research question → Analysis workflow → Result evidence → Conclusion → Next step**
 
-## 界面预览
+Research records stay on the computer. Shixu links project plans, experiment results, analysis steps and files without requiring a cloud account or moving original data.
 
-| 主窗口 · 调度 | 主窗口 · 项目进度 |
+## Download v1.2.1
+
+| Platform | Installer |
+| --- | --- |
+| Windows 10/11, x64 | [Download Windows installer](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.2.1/Shixu-Desktop-1.2.1-win-x64.exe) |
+| macOS, Apple Silicon (M series) | [Download Apple Silicon DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.2.1/Shixu-Desktop-1.2.1-mac-arm64.dmg) |
+| macOS, Intel | [Download Intel DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.2.1/Shixu-Desktop-1.2.1-mac-x64.dmg) |
+
+The [release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.2.1) also includes macOS ZIP archives, SHA-256 checksums and validation reports.
+
+**Signing status:** The Windows installer does not have a publisher certificate. The macOS apps use ad-hoc signatures; they are not Developer ID signed or notarized. Your operating system may display a publisher or security approval notice. Follow the system’s normal prompts; do not disable security protections.
+
+## How it supports research
+
+### Connect experiments and analyses
+
+Create a project around a research question, select and edit an analysis scaffold, then record sample information, software and reference versions, parameters, QC decisions, findings and limitations. Link local files, web reports or remote paths to a project or an individual workflow step.
+
+In **Lab bench → Record results**, connect an experiment to a research project. Its results and file references then appear with that project’s **Analysis & results**. Link evidence to a conclusion and create the next action from the same record. Project records, research-plan drafts and weekly summaries can reuse this information as Markdown.
+
+### Keep work moving at the bench and desk
+
+- Organize hands-on tasks, writing, analysis, meetings and waiting work in one daily schedule.
+- Record experiments with preparation checklists, ordered hands-on/waiting steps, sample references and reagent lots.
+- Run persistent timers, see due or overdue steps, and review work after resuming the app.
+- Use dilution and master-mix calculators with values you enter yourself.
+- Open the floating panel in always-visible or edge-docked mode; quick actions remain available alongside other desktop work.
+
+A timer marks a planned handoff time. It does not certify that a step succeeded or passed QC. Notifications require the application to be running, and sleep may delay them.
+
+### Plan common bioinformatics workflows
+
+The project workspace includes 12 editable planning scaffolds covering bulk and single-cell RNA-seq, ATAC-seq, ChIP-seq/CUT&Tag, WGBS/RRBS, WGS/WES, small RNA, 16S/ITS, metagenomics, quantitative proteomics, metabolomics and multi-omics.
+
+These scaffolds are for planning and documenting work. They do not install or run analysis pipelines; execute analyses in your validated computing environment.
+
+## English-first onboarding
+
+A new installation opens in English with an empty workspace. Click **Projects → Load examples** to add six fictional English plant studies, 18 linked tasks and six experiments:
+
+- Arabidopsis salt-stress transcriptomics and qPCR validation
+- Rice drought methylation–expression integration
+- Tomato rhizosphere microbiota under low phosphorus
+- Maize heat stress and pollen viability
+- Wheat leaf-rust interaction and resistance candidates
+- Soybean nodulation and rhizosphere communities
+
+Example records are added only after you click **Load examples**. Loading can be repeated without creating duplicate examples and preserves edits. The interface can be switched to Chinese without translating user-authored study records.
+
+All example results are fictional. File paths are placeholders. Replace them with your own records and your laboratory’s current approved SOPs before use.
+
+## Screenshots
+
+| Schedule | Projects |
 |:---:|:---:|
-| ![调度](docs/images/app-board.png) | ![项目进度](docs/images/app-projects.png) |
+| ![Schedule view](docs/images/app-board.png) | ![Project progress and evidence](docs/images/app-projects.png) |
 
-| 主窗口 · 回看 / 周报 | 置顶悬浮窗（展开） |
+| Review and weekly report | Floating panel |
 |:---:|:---:|
-| ![回看](docs/images/app-review.png) | ![悬浮窗](docs/images/dock-expanded.png) |
+| ![Review view](docs/images/app-review.png) | ![Expanded floating panel](docs/images/dock-expanded.png) |
 
-<div align="center">
+Screenshots illustrate the interface; project and experiment records shown in the app’s example workspace are synthetic.
 
-**收起状态的悬浮窗**（点击展开，可拖动到任意位置）
+## Run from source
 
-![悬浮窗收起](docs/images/dock-collapsed.png)
-
-</div>
-
-> 截图为示例数据界面（分析 / 论文 / 会议等），便于理解操作路径；安装后数据在你本机。
-
----
-
-## 为什么需要它
-
-| 常见困境 | 时序怎么帮 |
-|----------|------------|
-| 待办很多，不知道先做哪件 | 按截止日、后果、是否深度工作自动分档：立刻 / 今日 / 本周 / 可延后 |
-| 长期论文、课题进度说不清 | 项目 + 里程碑，进度环一眼可见，标出「下一步」 |
-| 分析程序在跑，人干等 | 「提交等待 → 可并行 → 结果已到」，机器跑机器的，人做人该做的 |
-| 周五想复盘却凑不齐内容 | 完成事项自动进时间线，一键生成周报 Markdown |
-| 切窗口时看不到优先级 | 置顶悬浮窗：收起看摘要，点击展开 |
-
----
-
-## 界面与操作
-
-### 1. 调度（主窗口）
-
-![调度页](docs/images/app-board.png)
-
-1. **录入事项** 或 **一键导入** JSON  
-2. 选择当前可用连续时间（≤15 分 / 30 分 / 1 小时 / 2 小时+）  
-3. 在「立刻处理 / 待深度块 / 等待结果」中开工  
-4. 快捷记工时：+15 分 / +30 分 / +1 小时  
-5. 分析类任务可点 **提交等待**；结果好了点 **结果已到**
-
-### 2. 项目进度（长期工作）
-
-![项目进度](docs/images/app-projects.png)
-
-- 进度环 = 里程碑完成比例  
-- 显示计划工时 vs 已投入、阻塞、目标日  
-- 高亮 **下一步**，可一键 **生成今日事项** 进调度
-
-### 3. 回看 / 周报
-
-![周报](docs/images/app-review.png)
-
-- 已完成事项时间线  
-- **生成本周总结** → Markdown 草稿  
-- 导出 / 导入 JSON，便于备份与换机
-
-### 4. 置顶悬浮窗
-
-| 收起 | 展开 |
-|:---:|:---:|
-| ![收起](docs/images/dock-collapsed.png) | ![展开](docs/images/dock-expanded.png) |
-
-- 拖动移动位置；**点击**展开（不因悬停误展开）  
-- 可并行推荐、等待中任务、快捷记工时  
-- 托盘菜单：打开主界面 / 导入导出 / 退出
-
----
-
-## 下载安装
-
-前往 **[Releases](../../releases)**：
-
-### Windows
-
-| 包 | 说明 |
-|----|------|
-| `时序调度-Setup-x.x.x.exe` | 正式安装包（推荐） |
-| `shixu-Portable.zip` | 绿色版 |
-
-Windows 10 / 11（64 位）。未签名时 SmartScreen：**更多信息 → 仍要运行**。
-
-### macOS
-
-| 包 | 说明 |
-|----|------|
-| `Shixu-Desktop-x.x.x-mac-arm64.dmg` | Apple Silicon（M 系列） |
-| `Shixu-Desktop-x.x.x-mac-x64.dmg` | Intel |
-| 对应 `.zip` | 免安装压缩包 |
-
-macOS 11+。未公证时首次：右键 App → **打开**（不要直接双击）。
-
-数据路径：
-
-- Windows：`%APPDATA%\时序调度\shixu-data.json`
-- macOS：`~/Library/Application Support/时序调度/shixu-data.json`
-
----
-
-## 从源码运行
+Requires Node.js 20 or later.
 
 ```bash
-git clone https://github.com/Einstein-life/shixu-desktop.git
-cd shixu-desktop
-npm install
+npm ci
+npm run localize
 npm start
 ```
 
-需要 Node.js 20+。网络较慢可用镜像：
+Run checks and build installers with:
 
 ```bash
-export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
-export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
-npm install
-```
-
----
-
-## 打包
-
-```bash
-# Windows
-python scripts/sync_and_fix.py
+npm test
+npm run check
 npm run dist:win
-
-# macOS（需在 macOS 上）
-node scripts/make-icns.js
 npm run dist:mac
 ```
 
-推送 `v*` 标签后，GitHub Actions 会自动构建 Windows + macOS 并挂到 Release。
+Build macOS packages on macOS. The build scripts write artifacts to `win/` and `mac/`.
 
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
+## Local data and migration
 
-更新文档截图（需本机 Chrome）：
+Projects, tasks, experiment records and settings are saved locally. Shixu does not upload linked files. JSON import/export supports manual backup and transfer; desktop saves also keep a rotating backup. File references store paths rather than file contents, so linked files are not bundled into JSON or Markdown exports.
 
-```bash
-python scripts/capture-docs-shots.py
-```
+For compatibility, this release retains the existing `Shixu Desktop 2 Beta` data directory. Export a JSON backup before installing or upgrading. Existing records and saved language preferences are retained. Previous Chinese records remain in Chinese; loading the English examples adds records without translating or overwriting existing work.
 
----
+## Validation and scope
 
-## 项目结构
+Release v1.2.1 passed 58 automated tests and cross-platform packaging checks. Validation included Windows installer, startup and uninstall checks, packaged-source verification, macOS ad-hoc signature checks, mounted DMG verification, ZIP integrity and an Apple Silicon startup check using an isolated empty workspace. See [release validation](https://github.com/Einstein-life/shixu-desktop/blob/v1.2.1/docs/VALIDATION.md) and download `SHA256SUMS.txt` from the [release](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.2.1) to verify installer files.
 
-```text
-electron/       主进程：窗口、托盘、自启、导入导出
-renderer/       主窗口 + 悬浮窗
-docs/images/    README 界面截图
-assets/         图标
-scripts/        打包 / 图标 / 截图脚本
-```
+These checks do not replace interactive acceptance on every operating system or device. Native Intel Mac startup has not been verified. Shixu complements laboratory SOPs, ELN/LIMS systems and workflow engines; it is not a regulated immutable audit trail and does not automatically execute bioinformatics pipelines.
 
----
+## Citation and support
 
-## 隐私
-
-任务、项目、周报仅存本机；导入导出由你手动触发；不收集使用数据。
-
----
+For research-software evaluations, cite the software version and report the operating system, processor architecture and workflow scaffolds used. Please open a [GitHub issue](https://github.com/Einstein-life/shixu-desktop/issues) to report a problem or suggest an improvement.
 
 ## License
 
-[MIT](./LICENSE) © 时序调度 contributors
+MIT. See [LICENSE](LICENSE).
