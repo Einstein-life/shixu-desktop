@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
@@ -39,16 +39,21 @@ jobs:
           if ($installer.Length -lt 1000000) { throw 'Installer is unexpectedly small' }
           $bytes=[System.IO.File]::ReadAllBytes($installer.FullName)
           if ($bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw 'Installer is not a Windows executable' }
-          $app=Join-Path (Get-Location) 'win/win-unpacked/Shixu Desktop.exe'
+          $installDir=Join-Path $env:RUNNER_TEMP 'shixu-install-check'
+          $install=Start-Process -FilePath $installer.FullName -ArgumentList @('/S',"/D=$installDir") -Wait -PassThru -WindowStyle Hidden
+          if ($install.ExitCode -ne 0) { throw "Installer exit $($install.ExitCode)" }
+          $app=Join-Path $installDir 'Shixu Desktop.exe'
           if (!(Test-Path -LiteralPath $app)) { throw 'Packaged executable missing' }
           node scripts/smoke-desktop.cjs $app win
           if ($LASTEXITCODE -ne 0) { throw 'Installed-app startup smoke failed' }
-          node scripts/verify-packages.cjs (Join-Path (Get-Location) 'win/win-unpacked/resources/app.asar')
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged source mismatch' }
-          $portable=Join-Path $env:RUNNER_TEMP 'shixu-portable-check'
-          Copy-Item -LiteralPath (Join-Path (Get-Location) 'win/win-unpacked') -Destination $portable -Recurse -Force
-          node scripts/smoke-desktop.cjs (Join-Path $portable 'Shixu Desktop.exe') win
-          if ($LASTEXITCODE -ne 0) { throw 'Portable startup smoke failed' }
+          node scripts/verify-packages.cjs (Join-Path $installDir 'resources/app.asar')
+          if ($LASTEXITCODE -ne 0) { throw 'Installed source mismatch' }
+          $uninstaller=Get-ChildItem -LiteralPath $installDir -Filter '*Uninstall*.exe' | Select-Object -First 1
+          if (!$uninstaller) { throw 'Uninstaller missing' }
+          $uninstall=Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -PassThru -WindowStyle Hidden
+          if ($uninstall.ExitCode -ne 0) { throw "Uninstaller exit $($uninstall.ExitCode)" }
+          if (Test-Path -LiteralPath $app) { throw 'Installed app remains after uninstall' }
+          @{installed=$true;started=$true;uninstalled=$true;checkedAt=(Get-Date).ToUniversalTime().ToString('o')} | ConvertTo-Json | Set-Content win/installer-validation.json
       - run: npm run checksums -- win
       - uses: actions/upload-artifact@v4
         if: always()
@@ -62,6 +67,7 @@ jobs:
             win/SHA256SUMS.txt
             win/package-verification.json
             win/startup-smoke.json
+            win/installer-validation.json
 
   macos:
     runs-on: macos-latest
@@ -85,19 +91,23 @@ jobs:
           set -euo pipefail
           archives=()
           while IFS= read -r -d '' app; do
-            if codesign --verify --deep --strict --verbose=2 "$app" 2>codesign-error.txt; then
-              echo "macOS code signature verified."
-            else
-              echo "macOS signature is not asserted in this unsigned development build; Developer ID signing and notarization are release steps."
-              cat codesign-error.txt
-            fi
+            codesign --verify --deep --strict --verbose=2 "$app"
             archives+=("$app/Contents/Resources/app.asar")
             lipo -archs "$app/Contents/MacOS/Shixu Desktop"
           done < <(find mac -maxdepth 3 -name 'Shixu Desktop.app' -type d -print0)
           test "${#archives[@]}" -eq 2
           npm run verify:package -- "${archives[@]}"
-          for file in mac/*.dmg; do hdiutil verify "$file"; done
+          for file in mac/*.dmg; do
+            hdiutil verify "$file"
+            mount="$RUNNER_TEMP/shixu-dmg-check"
+            mkdir -p "$mount"
+            hdiutil attach "$file" -readonly -nobrowse -mountpoint "$mount"
+            codesign --verify --deep --strict "$mount/Shixu Desktop.app"
+            hdiutil detach "$mount"
+          done
           for file in mac/*.zip; do unzip -tq "$file"; done
+          if [ "$(uname -m)" = arm64 ]; then native=mac/mac-arm64; else native=mac/mac; fi
+          node scripts/smoke-desktop.cjs "$native/Shixu Desktop.app/Contents/MacOS/Shixu Desktop" mac
       - run: npm run checksums -- mac
       - uses: actions/upload-artifact@v4
         if: always()

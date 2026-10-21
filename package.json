@@ -45,11 +45,13 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
+      "runAfterFinish": false,
       "artifactName": "Shixu-Desktop-${version}-win-${arch}.${ext}"
     },
     "mac": {
       "category": "public.app-category.productivity",
-      "identity": null,
+      "identity": "-",
+      "sign": "scripts/sign-mac.cjs",
       "icon": "assets/icon.icns",
       "darkModeSupport": true,
       "target": [
