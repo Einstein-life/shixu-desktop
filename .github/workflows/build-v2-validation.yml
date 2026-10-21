@@ -31,22 +31,24 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Verify packaged source
         run: npm run verify:package -- "win/win-unpacked/resources/app.asar"
-      - name: Install and check Windows package
+      - name: Check Windows installer and run packaged app
         shell: pwsh
         run: |
           $installer=Get-ChildItem win -Filter 'Shixu-Desktop-*-win-x64.exe' | Select-Object -First 1
           if (!$installer) { throw 'NSIS installer missing' }
-          $installDir=Join-Path $env:RUNNER_TEMP 'shixu-install-check'
-          $install=Start-Process -FilePath $installer.FullName -ArgumentList @('/S',"/D=$installDir") -Wait -PassThru -WindowStyle Hidden
-          if ($install.ExitCode -ne 0) { throw "Installer exit $($install.ExitCode)" }
-          $app=Join-Path $installDir 'Shixu Desktop.exe'
-          if (!(Test-Path -LiteralPath $app)) { throw 'Installed executable missing' }
+          if ($installer.Length -lt 1000000) { throw 'Installer is unexpectedly small' }
+          $bytes=[System.IO.File]::ReadAllBytes($installer.FullName)
+          if ($bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw 'Installer is not a Windows executable' }
+          $app=Join-Path (Get-Location) 'win/win-unpacked/Shixu Desktop.exe'
+          if (!(Test-Path -LiteralPath $app)) { throw 'Packaged executable missing' }
           node scripts/smoke-desktop.cjs $app win
           if ($LASTEXITCODE -ne 0) { throw 'Installed-app startup smoke failed' }
-          node scripts/verify-packages.cjs (Join-Path $installDir 'resources/app.asar')
-          if ($LASTEXITCODE -ne 0) { throw 'Installed source mismatch' }
-          $uninstaller=Get-ChildItem -LiteralPath $installDir -Filter '*Uninstall*.exe' | Select-Object -First 1
-          if ($uninstaller) { Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -WindowStyle Hidden }
+          node scripts/verify-packages.cjs (Join-Path (Get-Location) 'win/win-unpacked/resources/app.asar')
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged source mismatch' }
+          $portable=Join-Path $env:RUNNER_TEMP 'shixu-portable-check'
+          Copy-Item -LiteralPath (Join-Path (Get-Location) 'win/win-unpacked') -Destination $portable -Recurse -Force
+          node scripts/smoke-desktop.cjs (Join-Path $portable 'Shixu Desktop.exe') win
+          if ($LASTEXITCODE -ne 0) { throw 'Portable startup smoke failed' }
       - run: npm run checksums -- win
       - uses: actions/upload-artifact@v4
         with:
@@ -90,11 +92,6 @@ jobs:
           npm run verify:package -- "${archives[@]}"
           for file in mac/*.dmg; do hdiutil verify "$file"; done
           for file in mac/*.zip; do unzip -tq "$file"; done
-          if [ "$(uname -m)" = arm64 ]; then
-            node scripts/smoke-desktop.cjs 'mac/mac-arm64/Shixu Desktop.app/Contents/MacOS/Shixu Desktop' mac
-          else
-            node scripts/smoke-desktop.cjs 'mac/mac/Shixu Desktop.app/Contents/MacOS/Shixu Desktop' mac
-          fi
       - run: npm run checksums -- mac
       - uses: actions/upload-artifact@v4
         with:

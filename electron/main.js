@@ -43,6 +43,10 @@ function settingsFile() {
   return path.join(app.getPath('userData'), 'shixu-settings.json');
 }
 
+function isAbsoluteReference(value) {
+  return path.isAbsolute(value) || /^[a-zA-Z]:[\\/]/.test(value) || /^\\\\[^\\]+[\\]+/.test(value);
+}
+
 function defaultData() { return LabCore.empty(); }
 
 function loadData() {
@@ -360,7 +364,7 @@ ipcMain.handle('shixu:open-research-artifact', async (event,projectId,artifactId
   try {
     const {shell}=require('electron');
     if(t.kind==='web'){await shell.openExternal(t.value);return {ok:true};}
-    if(t.kind==='local'&&path.isAbsolute(t.value)) {
+    if(t.kind==='local'&&isAbsoluteReference(t.value)) {
       if(!fs.existsSync(t.value))return {ok:false,error:tr('文件已移动或不可访问，请更新关联路径。','File moved or inaccessible. Update the linked path.')};
       // Reveal the file instead of executing scripts or binaries linked to a project.
       shell.showItemInFolder(t.value);return {ok:true};
@@ -376,7 +380,7 @@ ipcMain.handle('shixu:open-experiment-artifact', async (event,experimentId,artif
   try {
     const {shell}=require('electron');
     if(target.kind==='web'){await shell.openExternal(target.value);return {ok:true};}
-    if(target.kind==='local'&&path.isAbsolute(target.value)){
+    if(target.kind==='local'&&isAbsoluteReference(target.value)){
       if(!fs.existsSync(target.value))return {ok:false,error:tr('文件已移动或不可访问，请更新实验文件路径。','File moved or inaccessible. Update the experiment file path.')};
       shell.showItemInFolder(target.value);return {ok:true};
     }
