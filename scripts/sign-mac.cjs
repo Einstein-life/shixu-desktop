@@ -9,7 +9,8 @@ exports.default = async function signMac(options) {
     identityValidation: false,
     preAutoEntitlements: false,
     preEmbedProvisioningProfile: false,
-    strictVerify: true,
+    // osx-sign uses undefined for the standard --strict flag; true becomes --strict=true.
+    strictVerify: undefined,
     optionsForFile: file => ({
       ...(options.optionsForFile ? options.optionsForFile(file) : {}),
       timestamp: 'none'
