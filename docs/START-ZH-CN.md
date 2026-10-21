@@ -1,6 +1,6 @@
 # 2.0 beta 源码使用说明
 
-本次开发全部保存在 `ImproveEfficiency/v2.0`，版本为 **2.0.0-beta.2**。新安装默认英文界面和空白工作区；用户点击后才载入英文植物研究示例。原版 Python 目录、Windows 1.x 目录与 macOS 1.x 目录未改动。
+本次开发全部保存在 `ImproveEfficiency/v2.0`，版本为 **2.0.0-beta.3**。新安装默认英文界面和空白工作区；用户点击后才载入英文植物研究示例。原版 Python 目录、Windows 1.x 目录与 macOS 1.x 目录未改动。
 
 ## 启动
 
@@ -40,3 +40,4 @@ npm run dist:win
 macOS 使用同一套源码，在 macOS 上安装依赖后运行 `npm run dist:mac`。正式发布前仍需分别完成 Windows 和 macOS 的实际安装/升级、通知、多屏、休眠恢复与数据往返测试。
 
 目前交付的是源码 beta，尚未生成并验证正式 Windows/macOS 安装包。请阅读同目录的验证报告，区分已通过的自动测试和未完成的桌面验收。
+
