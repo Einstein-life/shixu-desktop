@@ -6,6 +6,11 @@ Research workspace update validated on 2026-10-21 (Asia/Shanghai).
 
 The requested public version is `1.2.1`, based on the latest English-first research-workspace implementation. Package metadata, installer names and the public release tag use the same version. The workspace directory and existing data location are retained. Windows publisher signing and macOS Developer ID signing/notarization are not configured.
 
+- CI run [39575533582](https://github.com/Einstein-life/shixu-desktop/actions/runs/39575533582) succeeded for Windows, macOS and release-asset preparation. Source commit: `67fe32405b82ab8ebfbaa4eec6f9c35e91fcf2bb`.
+- Both platforms passed all 58 tests and package-source checks. Windows actual installation/startup/uninstallation, macOS strict ad-hoc signature checks and mounted DMGs, ZIP integrity and native arm64 empty-workspace startup passed.
+- [v1.2.1](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.2.1) was published as the latest non-prerelease on 2026-10-21. Its tag points to the build commit. The five installer/archive files and 13 supporting assets were checked against the release checksum manifest and GitHub asset digests before publication.
+- The release is based on the development branch; `main` was not merged or rewritten. Native Intel Mac startup, interactive OS acceptance and upgrades from the early `2.0.0-beta.*` builds remain unverified.
+
 ## Beta.3 label update (2026-10-21)
 
 - English example buttons now use the shorter **Load examples** label. Chinese uses **载入示例**. Behavior is unchanged: a fresh workspace is English and empty until the user clicks the button.
