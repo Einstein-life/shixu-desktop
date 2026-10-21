@@ -5,7 +5,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(C,R){
   'use strict';
   const SET='plant-research-v1';
-  function create(lang='zh-CN',now=Date.now(),variant=''){
+  function create(lang='en',now=Date.now(),variant=''){
     const L=(zh,en)=>lang==='en'?en:zh;
     const at=new Date(now).toISOString();
     const date=days=>{const d=new Date(now);d.setDate(d.getDate()+days);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -127,7 +127,7 @@
     const exampleSet=SET;
     const data=C.empty();
     for(const [index,s] of activeSpecs.entries()){
-      const prefix='example_plant_'+(variant==='english-additions'?'en_':'')+s.key,pid=prefix+'_project',eid=prefix+'_experiment';
+      const prefix='example_plant_'+(variant==='english-additions'||variant==='english-copy'?'en_':'')+s.key,pid=prefix+'_project',eid=prefix+'_experiment';
       const workflow=R.instantiate(s.workflow,lang);
       workflow.steps.forEach((step,i)=>{step.id=prefix+'_analysis_'+i;if(i===0){step.status='done';step.note=warning;step.updatedAt=at;}});
       const root='researcher@cluster:/example-data/'+s.key;
@@ -163,7 +163,7 @@
     }
     return C.migrate(data);
   }
-  function add(current,lang='zh-CN',now=Date.now()){
+  function add(current,lang='en',now=Date.now()){
     const out=C.migrate(current),sample=create(lang,now);
     for(const key of ['projects','tasks','experiments']){
       const ids=new Set(out[key].map(x=>x.id));
@@ -172,7 +172,7 @@
     return C.migrate(out);
   }
   function addEnglish(current,now=Date.now()){
-    const out=C.migrate(current),sample=create('en',now,'english-additions');
+    const out=C.migrate(current),sample=create('en',now,'english-copy');
     const represented=new Set(out.projects.filter(p=>p.example_locale==='en'&&p.example_key).map(p=>p.example_key));
     const missing=new Set(sample.projects.filter(p=>!represented.has(p.example_key)).map(p=>p.example_key));
     for(const key of ['projects','tasks','experiments']){

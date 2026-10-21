@@ -65,7 +65,7 @@ test('English additions extend the original Chinese examples without translating
 
 test('explicit English samples remain available after Chinese first launch and are not duplicated in an English workspace',()=>{
   const zh=P.create('zh-CN',now),withEnglish=P.addEnglish(zh,now);
-  assert.equal(withEnglish.projects.length,9);assert.equal(withEnglish.tasks.length,27);assert.equal(withEnglish.experiments.length,9);
+  assert.equal(withEnglish.projects.length,12);assert.equal(withEnglish.tasks.length,36);assert.equal(withEnglish.experiments.length,12);
   const added=withEnglish.projects.slice(6);
   assert.ok(!/[\u3400-\u9fff]/.test(JSON.stringify(added)));
   for(const p of added)assert.ok(R.analysisEvidence(p,withEnglish.experiments).items.every(x=>!x.missingSourceIds.length));
@@ -73,6 +73,40 @@ test('explicit English samples remain available after Chinese first launch and a
   withEnglish.projects[6].research_context.question='An edited question';
   assert.deepEqual(P.addEnglish(withEnglish,now),withEnglish);
   const en=P.create('en',now);assert.deepEqual(P.addEnglish(en,now),en);
+});
+
+test('English loader completes six linked examples without overwriting Chinese edits or English additions',()=>{
+  const old=P.create('zh-CN',now);
+  old.projects[0].research_context.question='保留我的修改';
+  const partial=P.create('en',now,'english-additions');
+  for(const key of ['projects','tasks','experiments'])old[key].push(...partial[key]);
+  const next=P.addEnglish(old,now);
+  assert.equal(next.projects.length,12);
+  assert.equal(next.projects[0].research_context.question,'保留我的修改');
+  const english=next.projects.filter(p=>p.example_locale==='en');
+  assert.equal(english.length,6);assert.equal(new Set(english.map(p=>p.example_key)).size,6);
+  for(const project of english)assert.ok(R.analysisEvidence(project,next.experiments).items.every(x=>!x.missingSourceIds.length));
+  assert.deepEqual(P.addEnglish(next,now),next);
+  assert.ok(!/[\u3400-\u9fff]/.test(JSON.stringify(P.create())));
+});
+
+test('loading examples requires a click and uses English even from the Chinese interface',async()=>{
+  const source=fs.readFileSync(path.join(__dirname,'../renderer/index.html'),'utf8');
+  const start=source.indexOf('  async function loadPlantExamples('),end=source.indexOf('  $("btnSyncDesk").addEventListener',start);
+  for(const desktop of [false,true]){
+    const buttons={btnPlantExamples:{},btnWelcomeExamples:{}},events={};let saves=0,notices=0;
+    const context={state:C.empty(),PlantExamples:P,normalizeState:C.migrate,isDemoShot:false,STORE_KEY:'test',
+      document:{documentElement:{lang:'zh-CN'},dispatchEvent:()=>notices++},CustomEvent:function(){},
+      window:desktop?{shixu:{save:async data=>{saves++;return data;}}}:{},
+      applyExternalState:data=>context.state=data,localStorage:{setItem:()=>saves++},toast:()=>{},render:()=>{},
+      $:id=>({...buttons[id],addEventListener:(_,fn)=>events[id]=fn})};
+    vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+    assert.equal(saves,0);assert.equal(context.state.projects.length,0);
+    await events.btnPlantExamples();assert.equal(saves,1);assert.equal(notices,1);
+    assert.equal(context.state.projects.length,6);assert.equal(context.state.tasks.length,18);
+    assert.ok(!/[\u3400-\u9fff]/.test(JSON.stringify(context.state)));
+    await events.btnWelcomeExamples();assert.equal(saves,1);assert.equal(context.state.projects.length,6);
+  }
 });
 
 function desktopStore(initial={}){
@@ -88,10 +122,13 @@ function desktopStore(initial={}){
   return {...api,files,filename};
 }
 
-test('desktop first launch persists examples once; a deliberately emptied workspace stays empty',()=>{
+test('desktop starts empty until English examples are explicitly loaded and persists the chosen records',()=>{
   const h=desktopStore(),first=h.loadData();
-  assert.equal(first.projects.length,6);assert.ok(h.files.has(h.filename));
-  first.projects[0].title='Edited project';h.saveData(first);
+  assert.equal(first.projects.length,0);assert.equal(first.tasks.length,0);assert.equal(first.experiments.length,0);assert.ok(h.files.has(h.filename));
+  const loaded=P.addEnglish(first,now);
+  assert.equal(loaded.projects.length,6);assert.equal(loaded.tasks.length,18);assert.equal(loaded.experiments.length,6);
+  assert.ok(!/[\u3400-\u9fff]/.test(JSON.stringify(loaded)));
+  loaded.projects[0].title='Edited project';h.saveData(loaded);
   assert.equal(h.loadData().projects[0].title,'Edited project');
   h.saveData(C.empty());assert.equal(h.loadData().projects.length,0);
 });
@@ -113,15 +150,15 @@ function browserStore(initial={},search=''){
   const source=fs.readFileSync(path.join(__dirname,'../renderer/index.html'),'utf8');
   const start=source.indexOf('  function loadState()'),end=source.indexOf('  function normalizeState(',start);
   const result=vm.runInNewContext(source.slice(start,end)+'\nloadState();',{
-    PlantExamples:P,normalizeState:C.migrate,STORE_KEY:search.includes('demo=1')?'shixu-v2-demo':'shixu-v2-store',
+    PlantExamples:P,normalizeState:C.migrate,emptyState:C.empty,STORE_KEY:search.includes('demo=1')?'shixu-v2-demo':'shixu-v2-store',
     window:{},document:{documentElement:{lang:'en'}},location:{search},URLSearchParams,
     localStorage:{getItem:key=>files.get(key)||null,setItem:(key,value)=>files.set(key,value)}
   });
   return {data:result,files};
 }
 
-test('browser first-run examples persist; stored empty data and malformed data are not overwritten',()=>{
-  const fresh=browserStore();assert.equal(fresh.data.projects.length,6);assert.ok(fresh.files.has('shixu-v2-store'));
+test('browser starts empty until a click loads examples; stored empty data and malformed data are not overwritten',()=>{
+  const fresh=browserStore();assert.equal(fresh.data.projects.length,0);assert.ok(!fresh.files.has('shixu-v2-store'));
   const empty=JSON.stringify(C.empty()),stored=browserStore({'shixu-v2-store':empty});
   assert.equal(stored.data.projects.length,0);
   const broken=browserStore({'shixu-v2-store':'{broken'});

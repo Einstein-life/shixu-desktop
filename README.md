@@ -14,7 +14,7 @@ npm start
 
 Select **English** or **简体中文** in the main window. The floating panel and tray menu use the same saved language.
 
-Fresh workspaces start with six fictional plant research projects, 18 linked tasks and six experiments: Arabidopsis salt response, rice drought methylation/expression integration, tomato rhizosphere response to low phosphorus, maize heat stress, wheat leaf rust, and soybean nodulation. Existing workspaces can add examples with **Projects → Load plant research examples**, or load the extra maize/wheat/soybean examples in English using **Load English plant examples**. Loading preserves existing records and edits. All results are fictional, paths are placeholders, and timers never start automatically. See the [plant example guide](docs/PLANT-EXAMPLES-ZH-CN.md).
+The interface defaults to English and a new research workspace starts empty. Click **Projects → Load six English plant examples** to add six fictional plant studies, 18 linked tasks and six experiments: Arabidopsis salt response, rice drought methylation/expression integration, tomato rhizosphere response to low phosphorus, maize heat stress, wheat leaf rust, and soybean nodulation. Switching the interface to Chinese does not change these English examples. Loading preserves existing records and edits. All results are fictional, paths are placeholders, and timers never start automatically. See the [plant example guide](docs/PLANT-EXAMPLES-ZH-CN.md).
 
 To preview the main window with separate sample data, open `renderer/index.html?demo=1`. Demo edits persist in their own browser store. The optional planning scaffolds are editable examples; use your laboratory's current approved SOP and verify all units and steps before use.
 
@@ -50,4 +50,4 @@ npm run dist:mac
 
 Package macOS releases on macOS. Read [the wet-lab improvement plan](docs/ROADMAP-ZH-CN.md) for the user-needs summary, interaction rules, proposed phases, and adoption measures.
 
-Installer output is written to `win/` and `mac/`. The Windows package is an x64 NSIS installer; macOS provides separate Intel (`x64`) and Apple Silicon (`arm64`) DMG/ZIP files. The current package version is `2.0.0-beta.1`. See [validation evidence](docs/VALIDATION.md) and [the installation acceptance guide](docs/INSTALLER-ACCEPTANCE-ZH-CN.md). Windows publisher signing and macOS Developer ID signing/notarization are not configured; macOS test artifacts use valid ad-hoc signatures.
+Installer output is written to `win/` and `mac/`. The Windows package is an x64 NSIS installer; macOS provides separate Intel (`x64`) and Apple Silicon (`arm64`) DMG/ZIP files. The current package version is `2.0.0-beta.2`. See [validation evidence](docs/VALIDATION.md) and [the installation acceptance guide](docs/INSTALLER-ACCEPTANCE-ZH-CN.md). Windows publisher signing and macOS Developer ID signing/notarization are not configured; macOS test artifacts use valid ad-hoc signatures.

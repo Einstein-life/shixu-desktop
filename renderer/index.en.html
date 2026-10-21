@@ -183,6 +183,11 @@
   </header>
 
   <main class="content">
+    <div class="banner" id="exampleWelcome" hidden>
+      <h2>Start your research workspace</h2>
+      <p>Create a project, or load six fictional plant research examples to explore questions, workflows, evidence, conclusions and next steps. Examples are added only when you click.</p>
+      <button class="btn btn-soft" type="button" id="btnWelcomeExamples">Load six English plant examples</button>
+    </div>
     <p class="sample-note" id="plantExampleNotice" hidden>Plant research examples are included. These fictional records are editable; replace placeholder paths with your own records.</p>
     
     <section id="view-board">
@@ -215,8 +220,7 @@
         <div class="banner-actions">
           <button class="btn btn-primary" type="button" id="btnAddProject2">New project</button>
           <button class="btn btn-ghost" type="button" id="btnSyncDesk2">Sync desktop app</button>
-          <button class="btn btn-ghost" type="button" id="btnPlantExamples">Load plant research examples</button>
-          <button class="btn btn-ghost" type="button" id="btnEnglishPlantExamples">Load English plant examples</button>
+          <button class="btn btn-ghost" type="button" id="btnPlantExamples">Load six English plant examples</button>
         </div>
       </div>
       <div id="projectList"></div>
@@ -345,8 +349,8 @@
           return migrated;
         }
       }
-      if (!raw && (!window.shixu || demo)) {
-        const seeded = normalizeState(PlantExamples.create(document.documentElement.lang));
+      if (!raw && demo) {
+        const seeded = normalizeState(PlantExamples.create('en'));
         localStorage.setItem(STORE_KEY, JSON.stringify(seeded));
         return seeded;
       }
@@ -848,6 +852,7 @@
   }
 
   function render() {
+    $("exampleWelcome").hidden = ['projects','tasks','experiments'].some(key=>state[key].length>0);
     $("plantExampleNotice").hidden = !['projects','tasks','experiments'].some(key=>state[key].some(item=>item.example_set===PlantExamples.SET));
     renderStats();
     const labActive = document.getElementById("labTab")?.classList.contains("on");
@@ -1107,8 +1112,8 @@
     } catch(err) {toast((english?'Could not load examples: ':'示例载入失败：')+err.message);}
     finally {button.disabled=false;}
   }
-  $("btnPlantExamples").addEventListener("click", () => loadPlantExamples($("btnPlantExamples"),document.documentElement.lang));
-  $("btnEnglishPlantExamples").addEventListener("click", () => loadPlantExamples($("btnEnglishPlantExamples"),'en',current=>PlantExamples.addEnglish(current)));
+  $("btnPlantExamples").addEventListener("click", () => loadPlantExamples($("btnPlantExamples"),'en',current=>PlantExamples.addEnglish(current)));
+  $("btnWelcomeExamples").addEventListener("click", () => loadPlantExamples($("btnWelcomeExamples"),'en',current=>PlantExamples.addEnglish(current)));
   $("btnSyncDesk").addEventListener("click", async () => { if (!(await pullFromDesktop(true))) await pushToDesktop(true); });
   $("btnSyncDesk2").addEventListener("click", async () => { if (!(await pullFromDesktop(true))) await pushToDesktop(true); });
   $("btnGenSummary").addEventListener("click", () => {

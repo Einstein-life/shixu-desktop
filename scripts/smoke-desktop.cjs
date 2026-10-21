@@ -22,8 +22,8 @@ const timer=setInterval(()=>{
   if(Date.now()-start<5000||!fs.existsSync(dataFile))return;
   try {
     const data=JSON.parse(fs.readFileSync(dataFile,'utf8'));
-    if(data.version!==4||data.projects.length!==6||data.tasks.length!==18||data.experiments.length!==6)throw Error('Unexpected first-run data');
-    const report={started:true,aliveForMs:Date.now()-start,version:require('../package.json').version,platform:process.platform,arch:process.arch,projects:data.projects.length,tasks:data.tasks.length,experiments:data.experiments.length,checkedAt:new Date().toISOString(),limits:'Checks process survival and isolated first-run persistence; does not establish visual layout or native notifications.'};
+    if(data.version!==4||data.projects.length!==0||data.tasks.length!==0||data.experiments.length!==0)throw Error('Fresh workspace must stay empty until examples are explicitly loaded');
+    const report={started:true,aliveForMs:Date.now()-start,version:require('../package.json').version,platform:process.platform,arch:process.arch,projects:data.projects.length,tasks:data.tasks.length,experiments:data.experiments.length,examplesAddedOnlyAfterUserAction:true,checkedAt:new Date().toISOString(),limits:'Checks process survival and isolated first-run persistence; does not establish visual layout or native notifications.'};
     fs.mkdirSync(path.join(root,folder),{recursive:true});fs.writeFileSync(path.join(root,folder,'startup-smoke.json'),JSON.stringify(report,null,2)+'\n');
     console.log(JSON.stringify(report,null,2));clearInterval(timer);child.kill();
   } catch(err){console.error(err.message);clearInterval(timer);child.kill();process.exitCode=1;}

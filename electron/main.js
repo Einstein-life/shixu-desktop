@@ -3,13 +3,12 @@ const path = require('path');
 const fs = require('fs');
 const LabCore = require('../renderer/lab-core.js');
 const ResearchCore = require('../renderer/research-core.js');
-const PlantExamples = require('../renderer/plant-examples.js');
 const {createAutoStart}=require('./autostart.js');
 app.setName('Shixu Desktop');
 const userDataPath = process.env.SHIXU_DATA_DIR || path.join(app.getPath('appData'), 'Shixu Desktop 2 Beta');
 fs.mkdirSync(userDataPath, { recursive: true });
 app.setPath('userData', userDataPath);
-let locale = 'zh-CN';
+let locale = 'en';
 const tr = (zh, en) => locale === 'en' ? en : zh;
 let labRequested = false;
 const liveNotifications = new Set();
@@ -47,9 +46,9 @@ function defaultData() { return LabCore.empty(); }
 
 function loadData() {
   if (!fs.existsSync(dataFile())) {
-    if (process.env.SHIXU_DATA_DIR) return saveData(PlantExamples.create(locale));
+    if (process.env.SHIXU_DATA_DIR) return saveData(defaultData());
     const legacy = legacyDataFile();
-    if (!fs.existsSync(legacy)) return saveData(PlantExamples.create(locale));
+    if (!fs.existsSync(legacy)) return saveData(defaultData());
     try {
       const migrated = LabCore.migrate(JSON.parse(fs.readFileSync(legacy, 'utf8')));
       fs.mkdirSync(path.dirname(dataFile()), { recursive: true });
@@ -549,7 +548,7 @@ function updateMacMenu() {
 }
 
 app.whenReady().then(() => {
-  locale=loadSettings().locale === 'en' ? 'en' : 'zh-CN';
+  locale=loadSettings().locale === 'zh-CN' ? 'zh-CN' : 'en';
   store = loadData();
   // The OS owns login-item state. Do not override a user's system-level change on launch.
 

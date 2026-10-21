@@ -1,8 +1,16 @@
-# 2.0.0-beta.1 validation
+# Shixu Desktop validation
 
 Research workspace update validated on 2026-10-21 (Asia/Shanghai).
 
-## Installer validation (2026-10-21)
+## Beta.2 English-first defaults (2026-10-21)
+
+- New installs use the English UI and an empty workspace. **Load six English plant examples** adds six English plant projects, 18 linked tasks and six experiments only after a user click. Switching the interface to Chinese preserves English example content.
+- Existing data and saved language choices are retained. Loading fills missing English example studies without overwriting edited Chinese or English records.
+- All 58 tests and script checks passed locally. Browser acceptance confirmed the empty English first view, six English studies after a click, and Chinese UI selection without altering study text.
+- The explicit `?demo=1` preview still seeds isolated English demo data. Normal desktop and browser workspaces never seed example data automatically.
+- Package build evidence will be added after the beta.2 CI run. The beta.1 installers described below predate this behavior.
+
+## Beta.1 installer validation (2026-10-21)
 
 - Build branch: [`codex/build-v2-installers`](https://github.com/Einstein-life/shixu-desktop/tree/codex/build-v2-installers), commit `d0291cefd8b98d2a7dc5ff453da422189123700f`. The main branch was not changed and no release was published.
 - GitHub Actions run [39549730875](https://github.com/Einstein-life/shixu-desktop/actions/runs/39549730875) completed successfully for Windows and macOS. Both platforms passed JavaScript checks and all 54 tests. The earlier successful run had not established macOS signature validity; its artifacts are superseded by this run.

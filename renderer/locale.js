@@ -5,7 +5,7 @@
   const key='shixu-v2-language';
   const params=new URLSearchParams(location.search);
   const requested=params.get('lang');
-  let preferred=requested || localStorage.getItem(key) || current;
+  let preferred=requested || localStorage.getItem(key) || 'en';
   function navigate(lang){
     const next=lang==='en'?'en':'zh-CN';
     localStorage.setItem(key,next);
