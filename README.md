@@ -64,15 +64,15 @@ All example results are fictional. File paths are placeholders. Replace them wit
 
 ## Screenshots
 
-| Schedule | Projects |
+| Schedule (wet-lab filter) | Projects |
 |:---:|:---:|
-| ![Schedule view](docs/images/app-board.png) | ![Project progress and evidence](docs/images/app-projects.png) |
+| ![English schedule with plant wet-lab tasks](docs/images/app-board-en.png) | ![English project progress and research evidence](docs/images/app-projects-en.png) |
 
 | Review and weekly report | Floating panel |
 |:---:|:---:|
-| ![Review view](docs/images/app-review.png) | ![Expanded floating panel](docs/images/dock-expanded.png) |
+| ![English review and generated weekly summary](docs/images/app-review-en.png) | ![Expanded floating panel with English plant research tasks](docs/images/dock-expanded-en.png) |
 
-Screenshots illustrate the interface; project and experiment records shown in the app’s example workspace are synthetic.
+Screenshots show the English interface in v1.2.1 with fictional English plant research records. The Schedule view uses the Wet lab filter; project records, experimental results and file references are illustrative placeholders.
 
 ## Run from source
 
