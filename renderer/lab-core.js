@@ -137,7 +137,12 @@
             }
           } else live.set(id,clone(value));
         }
-        out[key]=Array.from(live.values());
+        // Keep the submitting snapshot's order (new experiments are prepended
+        // by the editor), then retain concurrent records not in that snapshot.
+        out[key]=[
+          ...Array.from(next.keys()).filter(id=>live.has(id)).map(id=>live.get(id)),
+          ...Array.from(live.entries()).filter(([id])=>!next.has(id)).map(([,value])=>value)
+        ];
       } else if (!equal(base[key],incoming[key])) out[key]=clone(incoming[key]);
     }
     return migrate(out);

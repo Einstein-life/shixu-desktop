@@ -16,6 +16,7 @@ const liveNotifications = new Set();
 let mainWindow = null;
 let dockWindow = null;
 let dockExpanded = false;
+let dockWasVisibleBeforeMain = false;
 let tray = null;
 let store = null;
 const autoStart=createAutoStart({app,saveSettings});
@@ -156,9 +157,17 @@ function createMainWindow() {
     for (const channel of pendingMainEvents.splice(0)) mainWindow.webContents.send(channel);
     if (labRequested) { mainWindow.webContents.send('shixu:open-lab'); labRequested = false; }
   });
+  mainWindow.on('focus', () => {
+    if (dockWindow && !dockWindow.isDestroyed() && dockWindow.isVisible()) {
+      dockWasVisibleBeforeMain = true;
+      dockWindow.hide();
+    }
+  });
   mainWindow.on('closed', () => {
     mainWindow = null;
     mainWindowReady = false;
+    if (dockWindow && !dockWindow.isDestroyed() && dockWasVisibleBeforeMain) dockWindow.show();
+    dockWasVisibleBeforeMain = false;
   });
 }
 
@@ -192,6 +201,10 @@ function createDockWindow() {
   dockWindow.setAlwaysOnTop(true, 'screen-saver');
   dockWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   dockWindow.loadFile(pagePath('dock'));
+  if (mainWindow && mainWindow.isFocused()) {
+    dockWasVisibleBeforeMain = true;
+    dockWindow.hide();
+  }
   // 周期性再次置顶，避免被其他全屏/置顶窗口盖住
   dockWindow._topmostTimer = setInterval(() => {
     if (dockWindow && !dockWindow.isDestroyed()) {
@@ -223,6 +236,7 @@ function createTray() {
       {
         label: tr('显示/隐藏悬浮窗', 'Show / hide floating panel'),
         click: () => {
+          dockWasVisibleBeforeMain = false;
           if (!dockWindow) createDockWindow();
           else if (dockWindow.isVisible()) dockWindow.hide();
           else dockWindow.show();
@@ -260,6 +274,7 @@ function createTray() {
         else mainWindow.show();
         return;
       }
+      dockWasVisibleBeforeMain = false;
       if (!dockWindow) createDockWindow();
       else if (dockWindow.isVisible()) dockWindow.hide();
       else dockWindow.show();
@@ -300,7 +315,7 @@ ipcMain.handle('shixu:export-data', async (_e, payload) => {
   const win = mainWindow || BrowserWindow.getAllWindows()[0];
   const opts = {
     title: tr('导出时序数据', 'Export Shixu data'),
-    defaultPath: path.join(app.getPath('documents'), `shixu-data-${stamp}.json`),
+    defaultPath: path.join(app.getPath('downloads'), `shixu-data-${stamp}.json`),
     filters: [{ name: 'JSON', extensions: ['json'] }]
   };
   const ret = win
@@ -512,6 +527,7 @@ ipcMain.handle('shixu:open-main', () => {
 });
 
 ipcMain.handle('shixu:hide-dock', () => {
+  dockWasVisibleBeforeMain = false;
   if (dockWindow) dockWindow.hide();
   return true;
 });
@@ -536,6 +552,7 @@ function updateMacMenu() {
       {
         label: tr('显示/隐藏悬浮窗', 'Show / hide floating panel'),
         click: () => {
+          dockWasVisibleBeforeMain = false;
           if (!dockWindow) createDockWindow();
           else if (dockWindow.isVisible()) dockWindow.hide();
           else dockWindow.show();

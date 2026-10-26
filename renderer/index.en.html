@@ -54,7 +54,7 @@
     .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:10px; }
     .tab { min-height:36px; border-radius:8px; border:1px solid #2A3850; background:#121A26; color:#C5D0DC; font-size:13px; font-weight:600; }
     .tab.on { background:#2A3F8F; border-color:#5B6FD4; color:#fff; }
-    .content { padding:14px 14px 120px; }
+    .content { padding:14px 14px 156px; }
     .banner,.info-card,.task,.proj-card,.empty,.panel {
       background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
       box-shadow:var(--shadow);
@@ -104,6 +104,7 @@
     .chip.cat-meet { background:#FCE7F0; color:var(--meeting); }
     .chip.cat-admin { background:#F1F5F9; color:var(--admin); }
     .chip.block { background:#FCEBE8; color:var(--now); }
+    .chip.wait-note { max-width:180px; overflow:hidden; text-overflow:ellipsis; vertical-align:bottom; }
     .progress-line { margin-top:8px; }
     .bar { height:6px; background:var(--later-bg); border-radius:3px; overflow:hidden; }
     .bar > i { display:block; height:100%; background:var(--deep); border-radius:3px; }
@@ -136,7 +137,7 @@
     .panel h3 { font-size:14px; margin-bottom:6px; }
     .panel p, .panel li { font-size:12px; color:var(--ink-soft); line-height:1.5; }
     .panel ul { margin:6px 0 0 16px; }
-    .fab { position:fixed; left:50%; transform:translateX(-50%); bottom:max(16px, env(safe-area-inset-bottom)); z-index:30; width:min(402px, calc(100% - 28px)); display:grid; grid-template-columns:1.4fr 1fr; gap:8px; }
+    .fab { position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:30; width:min(430px, 100%); padding:12px 14px max(16px, env(safe-area-inset-bottom)); display:grid; grid-template-columns:1.4fr 1fr; gap:8px; background:linear-gradient(to bottom, rgba(238,242,246,0), var(--paper) 22%); }
     .fab .btn { min-height:48px; box-shadow:0 10px 24px rgba(15,20,26,.22); }
     .sheet { position:fixed; inset:0; z-index:40; display:none; align-items:flex-end; justify-content:center; }
     .sheet.open { display:flex; }
@@ -630,7 +631,7 @@
       } else if (w.length) {
         const parallel = p.slice(0,3).map(t=>`<span data-user-copy>${esc(t.title)}</span>`).join(" / ") || (document.documentElement.lang === "en" ? "review a log, reply to a collaborator, or read a paper" : "可整理日志、回信、读文献");
         hint.innerHTML = document.documentElement.lang === "en"
-          ? `⏳ ${w.length} runs waiting · suggested work: ${parallel}`
+          ? `⏳ ${w.length} ${w.length === 1 ? "task" : "tasks"} waiting · suggested work: ${parallel}`
           : `⏳ 等待结果 ${w.length} 项 · 人可并行：${parallel}`;
       } else hint.textContent = "";
     }
@@ -679,9 +680,9 @@
         ${deadlineChip(t.deadline)}
         <span class="chip score">分 ${t.score}</span>
         <span class="chip">工时 ${t.time_spent}h / ${t.time_planned}h</span>
-        ${t.run_state==="waiting" ? `<span class="chip deep">⏳ 机器运行中</span>` : ""}
+        ${t.run_state==="waiting" ? `<span class="chip deep">⏳ Run in progress</span>` : ""}
         ${t.run_state==="ready" ? `<span class="chip hot">待处理结果</span>` : ""}
-        ${t.wait_note ? `<span class="chip cool" data-user-copy>${esc(t.wait_note).slice(0,16)}</span>` : ""}
+        ${t.wait_note ? `<span class="chip cool wait-note" data-user-copy title="${esc(t.wait_note)}">${esc(t.wait_note)}</span>` : ""}
         ${proj ? `<span class="chip cool">项目：<span data-user-copy>${esc(proj.title).slice(0,10)}</span></span>` : ""}
         ${t.blocker ? `<span class="chip block">阻塞：<span data-user-copy>${esc(t.blocker).slice(0,12)}</span></span>` : ""}
       </div>
