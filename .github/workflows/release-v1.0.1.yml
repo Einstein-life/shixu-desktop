@@ -11,8 +11,12 @@ jobs:
         include:
           - runner: macos-15-intel
             arch: x64
+            app_dir: mac
+            mach_arch: x86_64
           - runner: macos-15
             arch: arm64
+            app_dir: mac-arm64
+            mach_arch: arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     steps:
@@ -24,13 +28,19 @@ jobs:
       - run: npm ci
       - run: npm run check && npm test
       - run: node scripts/make-icns.js
+      - name: Verify runner architecture
+        run: |
+          node -e "if (process.arch !== '${{ matrix.arch }}') throw new Error('Runner architecture mismatch: ' + process.arch)"
       - name: Build packages
-        run: npx electron-builder --mac --${{ matrix.arch }} --publish never --config.directories.output=mac
+        run: npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never --config.directories.output=mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Verify packaged source and startup
         run: |
-          APP=$(find mac -name 'Shixu Desktop.app' -type d | head -1)
+          set -euo pipefail
+          APP="mac/${{ matrix.app_dir }}/Shixu Desktop.app"
+          test -d "$APP"
+          /usr/bin/lipo -verify_arch ${{ matrix.mach_arch }} "$APP/Contents/MacOS/Shixu Desktop"
           node scripts/verify-packages.cjs "$APP/Contents/Resources/app.asar"
           node scripts/smoke-desktop.cjs "$APP/Contents/MacOS/Shixu Desktop" mac
           mv mac/package-verification.json mac/package-verification-mac-${{ matrix.arch }}.json
