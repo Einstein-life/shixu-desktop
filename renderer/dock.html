@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>时序悬浮窗</title>
+  <script src="locale.js"></script>
+  <script src="research-core.js"></script>
+  <script src="lab-core.js"></script>
+  <script src="dock-layout.js"></script>
+  <link rel="stylesheet" href="lab.css">
   <style>
     :root {
       --chrome:#0F141A; --chrome2:#1A2330; --paper:#EEF2F6; --card:#fff;
@@ -57,7 +62,7 @@
     .line.today { background:#2A2010; color:#FFD28A; font-weight:700; }
     .line.other { background:#121A26; color:#C5D0DC; }
     .empty { color:#9AABBC; font-size:13px; padding:12px 6px; }
-    .panel { display:none; height:100%; flex-direction:column; }
+    .panel { display:none; height:100%; min-height:0; flex:1 1 0; flex-direction:column; }
     .panel.open { display:flex; }
     .slots { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:0 10px 8px; }
     .slot {
@@ -70,7 +75,8 @@
       background:#0F1A2E; color:#C8D8FF; font-size:12px; line-height:1.4;
     }
     .rec.urgent { background:#2A0F0C; color:#FFD0C8; font-weight:700; }
-    .cards { flex:1; overflow:auto; padding:0 8px 8px; }
+    .cards { flex:1; min-height:0; overflow:auto; padding:0 8px 8px; }
+    .top,.slots,.rec,.foot,.lab-dock-alert { flex-shrink:0; }
     .card {
       background:#121A26; border:1px solid #243041; border-left:4px solid var(--muted);
       border-radius:8px; padding:8px 10px; margin-bottom:6px;
@@ -166,9 +172,10 @@
         <span class="badge now nodrag" id="badgeNow">立刻 0</span>
         <span class="badge today nodrag" id="badgeToday">今日 0</span>
         <span class="spacer"></span>
+        <button class="btn nodrag" data-lang-toggle title="Language / 语言">EN / 中文</button>
         <button class="btn nodrag" id="btnMode" title="显示模式">常显</button>
         <button class="btn nodrag" id="btnExpand" title="展开">＋</button>
-        <button class="btn nodrag" id="btnClose" title="退出">×</button>
+        <button class="btn nodrag" id="btnClose" title="隐藏悬浮窗">×</button>
       </div>
       <div class="body nodrag" id="peekBody">
         <div class="empty">点击展开调度…</div>
@@ -178,9 +185,10 @@
     <!-- expanded -->
     <div id="expanded" class="panel">
       <div class="top drag">
-        <strong style="color:#F4F7FA;font-size:13px">时序 · 生信调度</strong>
+        <strong style="color:#F4F7FA;font-size:13px">时序 · 科研调度</strong>
         <span class="hint nodrag">⠿ 可拖动</span>
         <span class="spacer"></span>
+        <button class="btn nodrag" data-lang-toggle title="Language / 语言">EN / 中文</button>
         <button class="btn nodrag" id="btnMode2">常显</button>
         <button class="btn nodrag" id="btnCollapse">—</button>
       </div>
@@ -196,14 +204,15 @@
   </div>
 
   <script>
-    const SLOT_LABELS = { "15":"≤15分", "30":"30分", "60":"1小时", "120":"2小时+" };
+    const L = (zh,en) => document.documentElement.lang === "en" ? en : zh;
+    const SLOT_LABELS = { "15":L("≤15分","≤15 min"), "30":L("30分","30 min"), "60":L("1小时","1 hour"), "120":L("2小时+","2+ hours") };
     const CATS = {
-      analysis:"分析", paper:"写文章", project:"写项目",
-      literature:"文献", meeting:"会议", admin:"杂务"
+      wetlab:L("湿实验","Wet lab"), analysis:L("分析","Analysis"), paper:L("写文章","Writing"), project:L("写项目","Project work"),
+      literature:L("文献","Literature"), meeting:L("会议","Meeting"), admin:L("杂务","Admin")
     };
     const DL = {
-      overdue:"已超期", today:"今天", tomorrow:"明天",
-      three_days:"3天内", this_week:"本周", later:"更晚"
+      overdue:L("已超期","Overdue"), today:L("今天","Today"), tomorrow:L("明天","Tomorrow"),
+      three_days:L("3天内","Within 3 days"), this_week:L("本周","This week"), later:L("更晚","Later")
     };
 
     let state = null;
@@ -224,8 +233,8 @@
     function normalize(data) {
       const tasks = (data.tasks || []).map((t, i) => ({
         ...t,
-        id: t.id || "t_" + i,
-        title: t.title || "未命名",
+        id: LabCore.cleanId(t.id),
+        title: t.title || L("未命名","Untitled task"),
         cat: CATS[t.cat] ? t.cat : "admin",
         deadline: DL[t.deadline] ? t.deadline : "later",
         run_state: ["waiting","ready"].includes((t.run_state||"").toLowerCase()) && !t.done
@@ -236,7 +245,9 @@
         progress: Number(t.progress) || (t.done ? 100 : 0)
       }));
       return {
-        version: 3,
+        ...data,
+        experiments: data.experiments || [],
+        version: 4,
         slot: data.slot || "60",
         capacity_hours: data.capacity_hours || 6,
         projects: data.projects || [],
@@ -274,11 +285,11 @@
       const waiting = act.filter((t) => t.run_state === "waiting").length;
       const ready = act.filter((t) => t.run_state === "ready").length;
       const bn = $("badgeNow"), bt = $("badgeToday");
-      bn.textContent = "立刻 " + now;
+      bn.textContent = L("立刻 ","Now ") + now;
       bn.className = "badge nodrag" + (now ? " now" : "");
-      if (ready) { bt.textContent = "待处理" + ready; bt.className = "badge nodrag ready"; }
-      else if (waiting) { bt.textContent = "等待" + waiting; bt.className = "badge nodrag wait"; }
-      else { bt.textContent = "今日 " + today; bt.className = "badge nodrag today"; }
+      if (ready) { bt.textContent = L("待处理 ","Review ") + ready; bt.className = "badge nodrag ready"; }
+      else if (waiting) { bt.textContent = L("等待 ","Waiting ") + waiting; bt.className = "badge nodrag wait"; }
+      else { bt.textContent = L("今日 ","Today ") + today; bt.className = "badge nodrag today"; }
 
       const shell = $("shell");
       shell.classList.toggle("has-now", now > 0 || ready > 0);
@@ -290,16 +301,16 @@
       const waiting = act.filter((t) => t.run_state === "waiting");
       const parallel = act.filter((t) => !t.run_state);
       const html = [];
-      ready.slice(0,2).forEach((t) => html.push(`<div class="line ready">【处理结果】${esc(t.title)}</div>`));
+      ready.slice(0,2).forEach((t) => html.push(`<div class="line ready">${L("【处理结果】","Review results: ")}<span data-user-copy>${esc(t.title)}</span></div>`));
       if (waiting.length) {
-        html.push(`<div class="line wait">⏳ 等待 ${waiting.length} 项 · 人可并行</div>`);
+        html.push(`<div class="line wait">⏳ ${L("等待 ","Waiting ")}${waiting.length}${L(" 项 · 人可并行"," · you can work in parallel")}</div>`);
       }
       parallel.slice(0,3).forEach((t) => {
         const cls = t.score >= 12 ? "now" : (t.score >= 9 ? "today" : "other");
-        const prefix = t.score >= 12 ? "【立刻】" : (t.score >= 9 ? "［今日］" : "【可并行】");
-        html.push(`<div class="line ${cls}">${prefix}${esc(t.title)}</div>`);
+        const prefix = t.score >= 12 ? L("【立刻】","Do now: ") : (t.score >= 9 ? L("［今日］","Today: ") : L("【可并行】","Parallel: "));
+        html.push(`<div class="line ${cls}">${prefix}<span data-user-copy>${esc(t.title)}</span></div>`);
       });
-      $("peekBody").innerHTML = html.length ? html.join("") : `<div class="empty">今日已清空<br/>展开后可录入（在完整视图）</div>`;
+      $("peekBody").innerHTML = html.length ? html.join("") : `<div class="empty">${L("今日已清空","No tasks for today")}<br/>${L("展开后可录入（在完整视图）","Open the full view to add tasks")}</div>`;
     }
 
     function renderSlots() {
@@ -318,11 +329,11 @@
       let pool = poolAll.filter((t) => effortFit(t, slot) && (t.score||0) >= 4);
       if (!pool.length) pool = poolAll;
       const parts = [];
-      if (ready.length) parts.push("结果已到：" + ready[0].title);
-      if (waiting.length) parts.push("等待中 " + waiting.length + " 项，人可并行");
-      if (pool.length) parts.push((waiting.length || ready.length ? "并行建议：" : "现在建议：") + pool[0].title);
-      const rec = $("rec");
-      rec.textContent = parts.length ? parts.join(" · ") : "暂无待办，可到完整视图录入";
+      if (ready.length) parts.push(L("结果已到：","Results ready: ") + ready[0].title);
+      if (waiting.length) parts.push(L("等待中 ","Waiting: ") + waiting.length + L(" 项，人可并行"," · work can continue"));
+      if (pool.length) parts.push((waiting.length || ready.length ? L("并行建议：","Parallel suggestion: ") : L("现在建议：","Suggested now: ")) + pool[0].title);
+      const rec = $("rec");rec.setAttribute("data-user-copy", "");
+      rec.textContent = parts.length ? parts.join(" · ") : L("暂无待办，可到完整视图录入","No open tasks. Add one in the full view.");
       rec.classList.toggle("urgent", !!ready.length || (pool[0] && pool[0].score >= 12 && !waiting.length));
     }
 
@@ -341,33 +352,48 @@
         const chips = [
           CATS[t.cat] || t.cat,
           DL[t.deadline] || t.deadline,
-          "分" + t.score,
-          "工时 " + t.time_spent + "h",
-          "进度 " + (t.done ? 100 : t.progress) + "%"
+          L("分 ","Score ") + t.score,
+          L("工时 ","Hours ") + t.time_spent + "h",
+          L("进度 ","Progress ") + (t.done ? 100 : t.progress) + "%"
         ];
-        if (t.run_state === "waiting") chips.push("机器运行中");
-        if (t.run_state === "ready") chips.push("待处理结果");
-        return `<div class="card ${cls} title-dark" data-id="${t.id}">
-          <div class="t">${esc(t.title)}</div>
+        if (t.run_state === "waiting") chips.push(L("机器运行中","Run in progress"));
+        if (t.run_state === "ready") chips.push(L("待处理结果","Results ready for review"));
+        return `<div class="card ${cls} title-dark" data-id="${esc(t.id)}">
+          <div class="t" data-user-copy>${esc(t.title)}</div>
           <div class="meta">${chips.map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>
           <div class="acts">
             ${t.run_state === "waiting" ? `
-              <button class="primary" data-act="run" data-rs="ready">结果已到</button>
-              <button data-act="run" data-rs="">取消等待</button>` : ""}
+              <button class="primary" data-act="run" data-rs="ready">${L("结果已到","Results ready")}</button>
+              <button data-act="run" data-rs="">${L("取消等待","Cancel wait")}</button>` : ""}
             ${t.run_state === "ready" ? `
-              <button class="danger" data-act="done">处理完成</button>
-              <button data-act="run" data-rs="">仍需跟进</button>` : ""}
+              <button class="danger" data-act="done">${L("处理完成","Mark reviewed")}</button>
+              <button data-act="run" data-rs="">${L("仍需跟进","Needs follow-up")}</button>` : ""}
             ${!t.run_state ? `
-              <button class="warn" data-act="run" data-rs="waiting">提交等待</button>
-              <button data-act="time" data-h="0.25">+15分</button>
-              <button data-act="time" data-h="0.5">+30分</button>` : ""}
+              <button class="warn" data-act="run" data-rs="waiting">${L("提交等待","Mark as waiting")}</button>
+              <button data-act="time" data-h="0.25">+15 ${L("分","min")}</button>
+              <button data-act="time" data-h="0.5">+30 ${L("分","min")}</button>` : ""}
           </div>
         </div>`;
       }).join("");
     }
 
     function esc(s) {
-      return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+
+    function renderLabAlerts() {
+      document.querySelectorAll('.lab-dock-alert').forEach(e => e.remove());
+      const running = (state.experiments || []).map(e => ({e,s:LabCore.currentStep(e)})).filter(x=>x.s?.status==='running').sort((a,b)=>Date.parse(a.s.dueAt)-Date.parse(b.s.dueAt));
+      if (!running.length) return;
+      const {e,s} = running[0], t = LabCore.timing(s);
+      const text = (t.remaining>0 ? L('下一实验接手：','Next lab action: ') : L('实验已到时：','Lab step due: ')) + e.title + ' / ' + s.title + ' · ' + Math.ceil(Math.abs(t.remaining)/60000) + ' min';
+      for (const id of ['collapsed','expanded']) {
+        const alert=document.createElement('div');alert.className='lab-dock-alert';alert.textContent=text;alert.setAttribute('data-user-copy','');
+        alert.onclick=()=>window.shixu?.openLab();
+        const panel=document.getElementById(id);
+        const target=id==='collapsed'?$('peekBody'):panel.querySelector('.slots');
+        target.before(alert);
+      }
     }
 
     function render() {
@@ -377,18 +403,22 @@
       renderSlots();
       renderRec();
       renderCards();
+      renderLabAlerts();
     }
 
-    function setExpanded(v) {
+    const dockLayout = window.DockLayout?.createDockLayoutController(() => window.shixu || {});
+
+    async function setExpanded(v) {
       expanded = !!v;
       if (expanded) {
         edgeHidden = false;
         document.getElementById("shell").classList.remove("ball-only");
-        if (window.shixu && window.shixu.dockSetBall) window.shixu.dockSetBall(false);
       }
+      const targetExpanded = expanded;
       $("collapsed").classList.toggle("open", !expanded);
       $("expanded").classList.toggle("open", expanded);
-      if (window.shixu && window.shixu.dockSetSize) window.shixu.dockSetSize(expanded);
+      if (dockLayout) await dockLayout.resize(targetExpanded);
+      else if (window.shixu && window.shixu.dockSetSize) await window.shixu.dockSetSize(targetExpanded);
     }
 
     let displayMode = "always";
@@ -396,7 +426,7 @@
     let homePos = null;
 
     function modeLabel() {
-      return displayMode === "always" ? "常显" : "贴边";
+      return displayMode === "always" ? L("常显","Always") : L("贴边","Edge");
     }
 
     function paintMode() {
@@ -420,26 +450,19 @@
 
     async function hideToEdge() {
       if (displayMode !== "edge" || expanded || edgeHidden) return;
-      if (window.shixu && window.shixu.dockSlide) {
-        await window.shixu.dockSlide({ mode: "hide-edge" });
-      }
-      document.getElementById("shell").classList.add("ball-only");
-      if (window.shixu && window.shixu.dockSetBall) {
-        await window.shixu.dockSetBall(true);
-      }
       edgeHidden = true;
+      if (dockLayout) await dockLayout.hide();
+      else if (window.shixu && window.shixu.dockSetBall) await window.shixu.dockSetBall(true);
+      if (!expanded && displayMode === "edge" && edgeHidden) document.getElementById("shell").classList.add("ball-only");
     }
 
     async function showFromEdge(force) {
       if (!edgeHidden && !force) return;
       edgeHidden = false;
       document.getElementById("shell").classList.remove("ball-only");
-      if (window.shixu && window.shixu.dockSetBall) {
-        await window.shixu.dockSetBall(false);
-      }
-      if (window.shixu && window.shixu.dockSlide && homePos) {
-        await window.shixu.dockSlide({ mode: "show", x: homePos.x, y: homePos.y });
-      }
+      if (dockLayout) await dockLayout.show(homePos);
+      else if (window.shixu && window.shixu.dockSetBall) await window.shixu.dockSetBall(false);
+      if (!dockLayout && window.shixu && window.shixu.dockSlide && homePos) await window.shixu.dockSlide({ mode: "show", x: homePos.x, y: homePos.y });
     }
 
     async function toggleMode() {
@@ -448,17 +471,14 @@
 
     $("btnMode") && $("btnMode").addEventListener("click", toggleMode);
     $("btnMode2") && $("btnMode2").addEventListener("click", toggleMode);
-    $("bb") && $("bb").addEventListener("click", async () => {
-      await showFromEdge(true);
-      setExpanded(true);
-    });
+    $("bb") && $("bb").addEventListener("click", () => { void setExpanded(true); });
 
     let hoverCount = 0;
     let lastHoverTs = Date.now();
     document.getElementById("shell").addEventListener("mouseenter", () => {
       hoverCount += 1;
       lastHoverTs = Date.now();
-      if (displayMode === "edge") showFromEdge(true);
+      if (displayMode === "edge" && edgeHidden) void showFromEdge(false);
     });
     document.getElementById("shell").addEventListener("mouseleave", () => {
       hoverCount = Math.max(0, hoverCount - 1);
@@ -502,11 +522,11 @@
       }
       paintMode();
       render();
-      if (new URLSearchParams(location.search).get("expanded") === "1") setExpanded(true);
+      await setExpanded(new URLSearchParams(location.search).get("expanded") === "1");
     }
 
-    $("btnExpand").addEventListener("click", () => setExpanded(true));
-    $("btnCollapse").addEventListener("click", () => setExpanded(false));
+    $("btnExpand").addEventListener("click", () => { void setExpanded(true); });
+    $("btnCollapse").addEventListener("click", () => { void setExpanded(false); });
     $("btnClose").addEventListener("click", () => {
       if (window.shixu) window.shixu.hideDock();
     });
@@ -561,9 +581,10 @@
 
     // click empty collapsed body expands
     $("peekBody").addEventListener("click", (e) => {
-      if (!e.target.closest("button")) setExpanded(true);
+      if (!e.target.closest("button")) void setExpanded(true);
     });
 
+    setInterval(() => { if (state) renderLabAlerts(); }, 1000);
     init();
   </script>
 </body>

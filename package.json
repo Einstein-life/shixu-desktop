@@ -1,26 +1,28 @@
 {
-  "name": "shixu",
-  "productName": "时序调度",
-  "version": "1.1.3",
-  "description": "时序 · 生信调度与项目进度（桌面版）",
+  "name": "shixu-desktop-v2",
+  "productName": "Shixu Desktop",
+  "version": "1.0.1",
+  "description": "Local-first research scheduling and wet-lab experiment workflows",
   "main": "electron/main.js",
-  "author": "时序",
+  "author": "Einstein-life",
   "license": "MIT",
   "scripts": {
-    "start": "electron .",
-    "dist": "node build-dist.js",
-    "dist:win": "node build-dist.js",
-    "dist:full": "node build-dist.js",
-    "dist:mac": "node build-mac.js"
+    "start": "node scripts/start.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "localize": "node scripts/build-locales.cjs",
+    "check": "node scripts/check.cjs",
+    "dist:win": "electron-builder --win nsis --x64 --publish never --config.directories.output=win",
+    "dist:mac": "node scripts/make-icns.js && electron-builder --mac --publish never --config.directories.output=mac",
+    "verify:package": "node scripts/verify-packages.cjs",
+    "checksums": "node scripts/release-checksums.cjs"
   },
   "devDependencies": {
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "app.shixu.desktop",
-    "productName": "时序调度",
-    "copyright": "Copyright © 2026",
+    "appId": "app.shixu.desktop.v2",
+    "productName": "Shixu Desktop",
     "directories": {
       "output": "release",
       "buildResources": "assets"
@@ -43,12 +45,15 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "时序调度",
-      "artifactName": "时序调度-Setup-${version}.exe"
+      "runAfterFinish": false,
+      "artifactName": "Shixu-Desktop-${version}-win-${arch}.${ext}"
     },
     "mac": {
       "category": "public.app-category.productivity",
-      "identity": null,
+      "identity": "-",
+      "sign": "scripts/sign-mac.cjs",
+      "icon": "assets/icon.icns",
+      "darkModeSupport": true,
       "target": [
         {
           "target": "dmg",
@@ -65,16 +70,7 @@
           ]
         }
       ],
-      "icon": "assets/icon.icns",
-      "artifactName": "Shixu-Desktop-${version}-mac-${arch}.${ext}",
-      "darkModeSupport": true
-    },
-    "dmg": {
-      "title": "时序调度",
       "artifactName": "Shixu-Desktop-${version}-mac-${arch}.${ext}"
     }
-  },
-  "allowScripts": {
-    "electron@33.4.11": true
   }
 }

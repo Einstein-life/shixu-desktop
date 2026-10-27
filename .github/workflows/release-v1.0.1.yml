@@ -1,0 +1,50 @@
+name: Release v1.0.1 macOS packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x64
+          - runner: macos-15
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check && npm test
+      - run: node scripts/make-icns.js
+      - name: Build packages
+        run: npx electron-builder --mac --${{ matrix.arch }} --publish never --config.directories.output=mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify packaged source and startup
+        run: |
+          APP=$(find mac -name 'Shixu Desktop.app' -type d | head -1)
+          node scripts/verify-packages.cjs "$APP/Contents/Resources/app.asar"
+          node scripts/smoke-desktop.cjs "$APP/Contents/MacOS/Shixu Desktop" mac
+          mv mac/package-verification.json mac/package-verification-mac-${{ matrix.arch }}.json
+          mv mac/startup-smoke.json mac/startup-smoke-mac-${{ matrix.arch }}.json
+          shasum -a 256 mac/Shixu-Desktop-1.0.1-mac-${{ matrix.arch }}.dmg mac/Shixu-Desktop-1.0.1-mac-${{ matrix.arch }}.zip | sed 's|mac/||' > mac/SHA256SUMS-mac-${{ matrix.arch }}.txt
+      - name: Upload verified release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload v1.0.1 mac/*-mac-${{ matrix.arch }}.* --clobber
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-${{ matrix.arch }}-diagnostics
+          path: |
+            mac/*.json
+            mac/*.txt
+            mac/builder-debug.yml

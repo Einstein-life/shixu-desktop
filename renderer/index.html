@@ -4,7 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0F141A" />
-  <title>时序 · 生信调度与项目进度</title>
+  <title>时序 · 科研调度与实验执行</title>
+  <link rel="stylesheet" href="lab.css">
+  <script src="locale.js"></script>
+  <script src="research-core.js"></script>
+  <script src="evidence-ui.js"></script>
+  <script src="research-ui.js"></script>
+  <script src="autostart-ui.js"></script>
+  <script src="lab-core.js"></script>
+  <script src="plant-examples.js"></script>
   <style>
     :root {
       --ink: #16202C; --ink-soft: #3D4A5C; --muted: #7B8798;
@@ -44,7 +52,7 @@
     .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:10px; }
     .tab { min-height:36px; border-radius:8px; border:1px solid #2A3850; background:#121A26; color:#C5D0DC; font-size:13px; font-weight:600; }
     .tab.on { background:#2A3F8F; border-color:#5B6FD4; color:#fff; }
-    .content { padding:14px 14px 120px; }
+    .content { padding:14px 14px 156px; }
     .banner,.info-card,.task,.proj-card,.empty,.panel {
       background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
       box-shadow:var(--shadow);
@@ -94,6 +102,7 @@
     .chip.cat-meet { background:#FCE7F0; color:var(--meeting); }
     .chip.cat-admin { background:#F1F5F9; color:var(--admin); }
     .chip.block { background:#FCEBE8; color:var(--now); }
+    .chip.wait-note { max-width:180px; overflow:hidden; text-overflow:ellipsis; vertical-align:bottom; }
     .progress-line { margin-top:8px; }
     .bar { height:6px; background:var(--later-bg); border-radius:3px; overflow:hidden; }
     .bar > i { display:block; height:100%; background:var(--deep); border-radius:3px; }
@@ -126,7 +135,7 @@
     .panel h3 { font-size:14px; margin-bottom:6px; }
     .panel p, .panel li { font-size:12px; color:var(--ink-soft); line-height:1.5; }
     .panel ul { margin:6px 0 0 16px; }
-    .fab { position:fixed; left:50%; transform:translateX(-50%); bottom:max(16px, env(safe-area-inset-bottom)); z-index:30; width:min(402px, calc(100% - 28px)); display:grid; grid-template-columns:1.4fr 1fr; gap:8px; }
+    .fab { position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:30; width:min(430px, 100%); padding:12px 14px max(16px, env(safe-area-inset-bottom)); display:grid; grid-template-columns:1.4fr 1fr; gap:8px; background:linear-gradient(to bottom, rgba(238,242,246,0), var(--paper) 22%); }
     .fab .btn { min-height:48px; box-shadow:0 10px 24px rgba(15,20,26,.22); }
     .sheet { position:fixed; inset:0; z-index:40; display:none; align-items:flex-end; justify-content:center; }
     .sheet.open { display:flex; }
@@ -156,7 +165,7 @@
 <div class="shell">
   <header class="status">
     <div class="status-top">
-      <div class="status-title">时序 · 生信调度与项目进度</div>
+      <div class="status-title">时序 · 科研调度与实验执行</div>
       <div class="status-date" id="statusDate">—</div>
     </div>
     <div class="status-main">
@@ -164,6 +173,7 @@
       <div class="stat"><div class="stat-val deep" id="statDeep">0</div><div class="stat-label">进行中项目</div></div>
       <div class="stat"><div class="stat-val proj" id="statHours">0h</div><div class="stat-label">本周投入</div></div>
     </div>
+    <div class="lang-control"><label for="languageSelect">Language / 语言</label><select id="languageSelect"><option value="zh-CN">简体中文</option><option value="en">English</option></select></div>
     <div class="tabs" role="tablist">
       <button class="tab on" type="button" data-tab="board" role="tab">调度</button>
       <button class="tab" type="button" data-tab="projects" role="tab">项目进度</button>
@@ -172,6 +182,12 @@
   </header>
 
   <main class="content">
+    <div class="banner" id="exampleWelcome" hidden>
+      <h2>开始记录你的研究</h2>
+      <p>新建项目，或点击载入 6 个英文植物研究示例，了解研究问题、流程、证据、结论与下一步的记录方式。点击后才会添加模拟记录。</p>
+      <button class="btn btn-soft" type="button" id="btnWelcomeExamples">载入示例</button>
+    </div>
+    <p class="sample-note" id="plantExampleNotice" hidden>当前包含植物研究示例；内容为模拟，可自由编辑。文件路径为占位，请替换为真实记录。</p>
     <!-- BOARD -->
     <section id="view-board">
       <div class="banner">
@@ -203,6 +219,7 @@
         <div class="banner-actions">
           <button class="btn btn-primary" type="button" id="btnAddProject2">新建项目</button>
           <button class="btn btn-ghost" type="button" id="btnSyncDesk2">同步桌面</button>
+          <button class="btn btn-ghost" type="button" id="btnPlantExamples">载入示例</button>
         </div>
       </div>
       <div id="projectList"></div>
@@ -256,9 +273,9 @@
 
 <script>
 (function () {
-  const DESK_API = "http://127.0.0.1:8790";
-  const STORE_KEY = "shixu-bio-v3-store";
+  const STORE_KEY = new URLSearchParams(location.search).get("demo") === "1" ? "shixu-v2-demo" : "shixu-v2-store";
   const CATS = {
+    wetlab: { label: "湿实验", cls: "cat-lit", deep: false, color: "#0b776e" },
     analysis: { label: "分析/管线", cls: "cat-analysis", deep: true, color: "#2166ac" },
     paper: { label: "写文章", cls: "cat-paper", deep: true, color: "#7c3aed" },
     project: { label: "写项目", cls: "cat-project", deep: true, color: "#b45309" },
@@ -315,25 +332,51 @@
     archiveList: $("archiveList"), summaryOut: $("summaryOut"), deskStatus: $("deskStatus"),
     formSheet: $("formSheet"), formBody: $("formBody"), helpSheet: $("helpSheet"), toast: $("toast")
   };
+  if (document.documentElement.lang === "en") {
+    els.summaryOut.textContent = "Select Generate this week's summary to create a draft.";
+  }
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(STORE_KEY);
+      const demo = new URLSearchParams(location.search).get("demo") === "1";
+      const raw = localStorage.getItem(STORE_KEY) || (!demo && localStorage.getItem("shixu-bio-v3-store"));
       if (raw) {
         const data = JSON.parse(raw);
-        if (data && Array.isArray(data.tasks)) return normalizeState(data);
+        if (data && Array.isArray(data.tasks)) {
+          let migrated = normalizeState(data);
+          if (!demo) {
+            const cleanup = PlantExamples.removeUntouchedChinese(migrated);
+            if (cleanup.removed.length) {
+              try {
+                localStorage.setItem(STORE_KEY + '.before-chinese-example-cleanup-' + Date.now(), JSON.stringify(migrated));
+                localStorage.setItem(STORE_KEY, JSON.stringify(cleanup.data));
+                migrated = cleanup.data;
+              } catch (_) { return migrated; }
+            }
+          }
+          try { localStorage.setItem(STORE_KEY, JSON.stringify(migrated)); } catch (_) {}
+          return migrated;
+        }
+      }
+      if (!raw && demo) {
+        const seeded = normalizeState(PlantExamples.create('en'));
+        localStorage.setItem(STORE_KEY, JSON.stringify(seeded));
+        return seeded;
       }
     } catch (_) {}
     return emptyState();
   }
 
   function emptyState() {
-    return { version: 3, slot: "60", capacity_hours: 6, projects: [], tasks: [], summaries: [] };
+    return { experiments: [], version: 4, slot: "60", capacity_hours: 6, projects: [], tasks: [], summaries: [] };
   }
 
   function normalizeState(data) {
+    data = LabCore.migrate(data);
     const s = {
-      version: 3,
+      ...data,
+      experiments: Array.isArray(data.experiments) ? data.experiments : [],
+      version: 4,
       slot: data.slot || "60",
       capacity_hours: data.capacity_hours || 6,
       projects: Array.isArray(data.projects) ? data.projects.map(normalizeProject) : [],
@@ -345,8 +388,9 @@
 
   function normalizeProject(p) {
     return {
-      id: p.id || uid("p"),
-      title: p.title || "未命名项目",
+      ...p,
+      id: LabCore.cleanId(p.id),
+      title: p.title || (document.documentElement.lang === "en" ? "Untitled project" : "未命名项目"),
       cat: CATS[p.cat] ? p.cat : "analysis",
       deadline: DEADLINES[p.deadline] ? p.deadline : "later",
       deadline_date: p.deadline_date || "",
@@ -355,10 +399,15 @@
       time_spent_hours: Number(p.time_spent_hours) || 0,
       blocker: p.blocker || "",
       summary: p.summary || "",
+      analysis_workflow: normalizeAnalysisWorkflow(p.analysis_workflow),
+      artifacts: normalizeArtifacts(p.artifacts),
+      research_context: ResearchCore.normalizeProject(p).research_context,
+      evidence: ResearchCore.normalizeProject(p).evidence,
+      linked_experiment_ids: ResearchCore.normalizeProject(p).linked_experiment_ids,
       createdAt: p.createdAt || Date.now(),
       completedAt: p.completedAt || null,
       milestones: Array.isArray(p.milestones) ? p.milestones.map((m, i) => ({
-        id: m.id || "m" + (i + 1),
+        id: LabCore.cleanId(m.id || "m" + (i + 1)),
         title: m.title || ("里程碑 " + (i + 1)),
         done: !!m.done,
         doneAt: m.doneAt || null,
@@ -367,11 +416,20 @@
     };
   }
 
+  function normalizeAnalysisWorkflow(raw) {
+    return ResearchCore.normalizeWorkflow(raw);
+  }
+
+  function normalizeArtifacts(raw) {
+    return ResearchCore.normalizeArtifacts(raw);
+  }
+
   function normalizeTask(t) {
     const cat = CATS[t.cat] ? t.cat : "admin";
     return {
-      id: t.id || uid("t"),
-      title: t.title || "未命名事项",
+      ...t,
+      id: LabCore.cleanId(t.id),
+      title: t.title || (document.documentElement.lang === "en" ? "Untitled task" : "未命名事项"),
       cat,
       deadline: DEADLINES[t.deadline] ? t.deadline : "later",
       impact: IMPACTS[t.impact] ? t.impact : "mild",
@@ -384,7 +442,7 @@
       wait_note: t.wait_note || "",
       wait_started_at: t.wait_started_at || null,
       progress: Number.isFinite(Number(t.progress)) ? Number(t.progress) : (t.done ? 100 : 0),
-      time_planned: Number(t.time_planned) || EFFORTS[t.effort].hours,
+      time_planned: Number(t.time_planned) || (EFFORTS[t.effort]?.hours ?? 1),
       time_spent: Number(t.time_spent) || 0,
       blocker: t.blocker || "",
       project_id: t.project_id || null,
@@ -402,7 +460,8 @@
     state.tasks = state.tasks.map(normalizeTask);
     state.projects = state.projects.map(normalizeProject);
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (_) {}
-    if (push) pushToDesktop(false);
+    document.dispatchEvent(new CustomEvent("shixu-data", {detail:{source:"tasks",data:state}}));
+    if (push && new URLSearchParams(location.search).get("demo") !== "1") pushToDesktop(false);
   }
 
   function computeScore(t) {
@@ -534,8 +593,12 @@
     els.statDeep.textContent = String(state.projects.filter((p) => p.status === "active").length);
     els.statHours.textContent = weekHours() + "h";
     const d = new Date();
-    const w = ["日","一","二","三","四","五","六"][d.getDay()];
-    els.statusDate.textContent = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")} 周${w}`;
+    if (document.documentElement.lang === "en") {
+      els.statusDate.textContent = d.toLocaleDateString("en-GB", {day:"2-digit",month:"short",year:"numeric",weekday:"short"});
+    } else {
+      const w = ["日","一","二","三","四","五","六"][d.getDay()];
+      els.statusDate.textContent = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")} 周${w}`;
+    }
   }
 
   function renderFilters() {
@@ -548,7 +611,7 @@
     // fix cat ids
     items[3] = { id: "analysis", label: "分析/管线" };
     const fixed = [
-      { id: "all", label: "全部" }, { id: "deep", label: "仅深度" }, { id: "frag", label: "仅碎片" },
+      { id: "all", label: "全部" }, { id: "wetlab", label: "湿实验" }, { id: "deep", label: "仅深度" }, { id: "frag", label: "仅碎片" },
       { id: "analysis", label: "分析/管线" }, { id: "paper", label: "写文章" }, { id: "project", label: "写项目" },
       { id: "literature", label: "读文献" }, { id: "meeting", label: "会议/汇报" }, { id: "admin", label: "杂务" }
     ];
@@ -569,9 +632,16 @@
       const w = waitingTasks();
       const r = readyTasks();
       const p = state.tasks.filter(isParallel).sort((a,b)=>b.score-a.score);
-      if (r.length) hint.textContent = `● 结果已到 ${r.length} 项，请先处理：${r[0].title}`;
-      else if (w.length) hint.textContent = `⏳ 等待结果 ${w.length} 项 · 人可并行：${p.slice(0,3).map(t=>t.title).join(" / ") || "可整理日志、回信、读文献"}`;
-      else hint.textContent = "";
+      if (r.length) {
+        hint.innerHTML = document.documentElement.lang === "en"
+          ? `● Results ready (${r.length}). Review next: <span data-user-copy>${esc(r[0].title)}</span>`
+          : `● 结果已到 ${r.length} 项，请先处理：<span data-user-copy>${esc(r[0].title)}</span>`;
+      } else if (w.length) {
+        const parallel = p.slice(0,3).map(t=>`<span data-user-copy>${esc(t.title)}</span>`).join(" / ") || (document.documentElement.lang === "en" ? "review a log, reply to a collaborator, or read a paper" : "可整理日志、回信、读文献");
+        hint.innerHTML = document.documentElement.lang === "en"
+          ? `⏳ ${w.length} ${w.length === 1 ? "task" : "tasks"} waiting · suggested work: ${parallel}`
+          : `⏳ 等待结果 ${w.length} 项 · 人可并行：${parallel}`;
+      } else hint.textContent = "";
     }
     const visible = state.tasks.filter(matchFilter);
     if (!state.tasks.length) {
@@ -618,14 +688,14 @@
         ${deadlineChip(t.deadline)}
         <span class="chip score">分 ${t.score}</span>
         <span class="chip">工时 ${t.time_spent}h / ${t.time_planned}h</span>
-        ${t.run_state==="waiting" ? `<span class="chip deep">⏳ 机器运行中</span>` : ""}
+        ${t.run_state==="waiting" ? `<span class="chip deep">⏳ ${document.documentElement.lang === "en" ? "Run in progress" : "机器运行中"}</span>` : ""}
         ${t.run_state==="ready" ? `<span class="chip hot">待处理结果</span>` : ""}
-        ${t.wait_note ? `<span class="chip cool">${esc(t.wait_note).slice(0,16)}</span>` : ""}
-        ${proj ? `<span class="chip cool">项目：${esc(proj.title).slice(0,10)}</span>` : ""}
-        ${t.blocker ? `<span class="chip block">阻塞：${esc(t.blocker).slice(0,12)}</span>` : ""}
+        ${t.wait_note ? `<span class="chip cool wait-note" data-user-copy title="${esc(t.wait_note)}">${esc(t.wait_note)}</span>` : ""}
+        ${proj ? `<span class="chip cool">项目：<span data-user-copy>${esc(proj.title).slice(0,10)}</span></span>` : ""}
+        ${t.blocker ? `<span class="chip block">阻塞：<span data-user-copy>${esc(t.blocker).slice(0,12)}</span></span>` : ""}
       </div>
       <div class="progress-line"><div class="bar"><i style="width:${t.done?100:t.progress}%"></i></div>
-        <div class="bar-text">进度 ${t.done?100:t.progress}%${t.result_note?" · "+esc(t.result_note):""}</div></div>
+        <div class="bar-text">进度 ${t.done?100:t.progress}%${t.result_note?" · "+`<span data-user-copy>${esc(t.result_note)}</span>`:""}</div></div>
       ${!t.done ? `<div class="time-row">
         ${t.run_state==="waiting" ? `
           <button class="btn btn-soft btn-mini" type="button" data-action="run" data-id="${t.id}" data-rs="ready">结果已到</button>
@@ -678,26 +748,28 @@
             <span class="chip">工时 ${p.time_spent_hours}h / ${p.time_planned_hours}h</span>
             ${p.status==="done" ? `<span class="chip cool">已归档</span>` : ""}
           </div>
-          ${p.blocker ? `<div class="proj-meta"><span class="chip block">阻塞：${esc(p.blocker)}</span></div>` : ""}
+      ${p.blocker ? `<div class="proj-meta"><span class="chip block">阻塞：<span data-user-copy>${esc(p.blocker)}</span></span></div>` : ""}
         </div>
       </div>
       ${next ? `<div class="panel" style="margin-top:10px;box-shadow:none;background:var(--deep-bg);border-color:#D5DAF5">
         <h3 style="color:var(--deep)">下一步</h3>
-        <p>${esc(next.title)}${next.deadline?` · 截止 ${esc(next.deadline)}`:""}</p>
+        <p><span data-user-copy>${esc(next.title)}</span>${next.deadline?` · 截止 ${esc(next.deadline)}`:""}</p>
       </div>` : `<div class="panel" style="margin-top:10px;box-shadow:none"><p>全部里程碑已完成，可写总结并归档。</p></div>`}
       <div class="ms-list">
         ${p.milestones.map((m)=>`<div class="ms-item ${m.done?"done":""}">
-          <button class="ms-btn" type="button" data-action="ms" data-project="${p.id}" data-ms="${m.id}" aria-label="切换里程碑">✓</button>
+          <button class="ms-btn" type="button" data-action="ms" data-project="${p.id}" data-ms="${m.id}" aria-label="${document.documentElement.lang === 'en' ? 'Toggle milestone' : '切换里程碑'}">✓</button>
           <div style="flex:1">${esc(m.title)}</div>
           ${m.done ? `<div class="ms-next">${esc((m.doneAt||"").slice(0,10))}</div>` : (m.deadline?`<div class="ms-next">${esc(m.deadline)}</div>`:"")}
         </div>`).join("")}
       </div>
       <div class="task-actions">
+        ${ResearchUI.card(p,state.experiments)}
         <button class="btn btn-soft btn-mini" type="button" data-action="time-proj" data-project="${p.id}" data-h="0.5">项目+30分</button>
         <button class="btn btn-soft btn-mini" type="button" data-action="time-proj" data-project="${p.id}" data-h="1">项目+1h</button>
         <button class="btn btn-ghost btn-mini" type="button" data-action="task-from-project" data-project="${p.id}">生成今日事项</button>
         <button class="btn btn-ghost btn-mini" type="button" data-action="edit-project" data-project="${p.id}">编辑</button>
         <button class="btn btn-danger-ghost btn-mini" type="button" data-action="archive-project" data-project="${p.id}">归档项目</button>
+        <button class="btn btn-danger-ghost btn-mini" type="button" data-action="delete-project" data-project="${p.id}">${document.documentElement.lang === "en" ? "Delete project" : "删除项目"}</button>
       </div>
     </article>`;
   }
@@ -713,7 +785,7 @@
         items.push({
           date: t.completedAt || "",
           title: t.title,
-          note: `${CATS[t.cat]?.label || t.cat} · 工时 ${t.time_spent}h${t.result_note ? " · " + t.result_note : ""}${t.project_id ? " · 项目关联" : ""}`,
+          note: `${document.documentElement.lang === "en" ? ({wetlab:"Wet lab",analysis:"Analysis / pipeline",paper:"Writing",project:"Project work",literature:"Reading",meeting:"Meetings / talks",admin:"Admin / communication"}[t.cat] || esc(t.cat)) : esc(CATS[t.cat]?.label || t.cat)} · ${document.documentElement.lang === "en" ? "Hours " : "工时 "}${t.time_spent}h${t.result_note ? " · " + (document.documentElement.lang === "en" ? "Result: " : "结果：") + `<span data-user-copy>${esc(t.result_note)}</span>` : ""}${t.project_id ? " · " + (document.documentElement.lang === "en" ? "Linked project" : "项目关联") : ""}`,
           kind: "事项"
         });
       });
@@ -721,20 +793,23 @@
         items.push({
           date: p.completedAt || "",
           title: p.title,
-          note: `项目归档 · ${p.milestones.filter(m=>m.done).length}/${p.milestones.length} 里程碑 · 投入 ${p.time_spent_hours}h${p.summary ? " · " + p.summary : ""}`,
-          kind: "项目"
+          note: `${document.documentElement.lang === "en" ? "Project archived" : "项目归档"} · ${p.milestones.filter(m=>m.done).length}/${p.milestones.length} ${document.documentElement.lang === "en" ? "milestones" : "里程碑"} · ${document.documentElement.lang === "en" ? "logged" : "投入"} ${p.time_spent_hours}h${p.summary ? " · <span data-user-copy>" + esc(p.summary) + "</span>" : ""}`,
+          kind: "项目",
+          research: ResearchUI.card(p,state.experiments)
         });
       });
       items.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
       els.archiveList.innerHTML = items.map((it)=>`<article class="tl-item">
         <div class="tl-date">${esc((it.date||"未标注时间").toString().slice(0,16).replace("T"," "))} · ${it.kind}</div>
         <div class="tl-title">${esc(it.title)}</div>
-        <div class="tl-note">${esc(it.note)}</div>
+        <div class="tl-note">${it.note}</div>${it.research || ""}
       </article>`).join("");
     }
   }
 
   function buildWeeklySummary() {
+    const en = document.documentElement.lang === "en";
+    const tr = (zh, english) => en ? english : zh;
     const ws = weekStart(), we = weekEnd();
     const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     const doneThisWeek = state.tasks.filter((t)=>t.done && inThisWeek(t.completedAt));
@@ -745,63 +820,167 @@
     activeProjects.forEach((p)=>{ if (p.blocker) blockers.push(`${p.title}：${p.blocker}`); });
     const hours = weekHours();
     const lines = [];
-    lines.push(`# 时序周报草稿 · ${fmt(ws)} ~ ${fmt(we)}`);
+    lines.push(`# ${tr("时序周报草稿", "Shixu Weekly Summary")} · ${fmt(ws)} ~ ${fmt(we)}`);
     lines.push("");
-    lines.push(`> 本周记录投入约 ${hours}h（按事项已记工时汇总，项目工时可另计）。`);
+    lines.push(`> ${tr("本周记录投入约", "About")} ${hours}h ${tr("（按事项已记工时汇总，项目工时可另计）。", "logged from tasks; project hours may be tracked separately.")}`);
     lines.push("");
-    lines.push("## 一、本周已完成");
-    if (!doneThisWeek.length) lines.push("- （本周暂无勾选完成的事项）");
+    lines.push(`## ${tr("一、本周已完成", "1. Completed this week")}`);
+    if (!doneThisWeek.length) lines.push(`- ${tr("（本周暂无勾选完成的事项）", "No tasks marked complete this week.")}`);
     else doneThisWeek.forEach((t) => {
-      lines.push(`- [${fmt(new Date(t.completedAt))}] ${t.title}（${CATS[t.cat]?.label||t.cat}，投入 ${t.time_spent}h）${t.result_note?"  \n  结果："+t.result_note:""}`);
+      lines.push(`- [${fmt(new Date(t.completedAt))}] ${t.title} (${en ? ({wetlab:"Wet lab",analysis:"Analysis / pipeline",paper:"Writing",project:"Project work",literature:"Reading",meeting:"Meetings / talks",admin:"Admin / communication"}[t.cat] || t.cat) : (CATS[t.cat]?.label||t.cat)}, ${tr("投入", "logged")} ${t.time_spent}h)${t.result_note?"  \n  "+tr("结果：", "Result: ")+t.result_note:""}`);
     });
     lines.push("");
-    lines.push("## 二、进行中项目进度");
-    if (!activeProjects.length) lines.push("- （无进行中项目）");
+    lines.push(`## ${tr("二、进行中项目进度", "2. Active project progress")}`);
+    if (!activeProjects.length) lines.push(`- ${tr("（无进行中项目）", "No active projects.")}`);
     else activeProjects.forEach((p) => {
       const pct = projProgress(p);
       const next = nextMilestone(p);
-      lines.push(`- **${p.title}**：里程碑 ${p.milestones.filter(m=>m.done).length}/${p.milestones.length}（${pct}%），工时 ${p.time_spent_hours}h/${p.time_planned_hours}h${p.deadline_date?"，目标日 "+p.deadline_date:""}`);
-      if (next) lines.push(`  - 下一步：${next.title}${next.deadline?"（"+next.deadline+"）":""}`);
-      if (p.blocker) lines.push(`  - 阻塞：${p.blocker}`);
+      lines.push(`- **${p.title}**: ${tr("里程碑", "Milestones")} ${p.milestones.filter(m=>m.done).length}/${p.milestones.length} (${pct}%), ${tr("工时", "hours")} ${p.time_spent_hours}h/${p.time_planned_hours}h${p.deadline_date?", "+tr("目标日", "target date")+" "+p.deadline_date:""}`);
+      if (next) lines.push(`  - ${tr("下一步：", "Next: ")}${next.title}${next.deadline?" ("+next.deadline+")":""}`);
+      if (p.blocker) lines.push(`  - ${tr("阻塞：", "Blocked: ")}${p.blocker}`);
+      lines.push(...ResearchUI.summaryLines(p,state.experiments));
     });
     lines.push("");
-    lines.push("## 三、下周建议重点");
+    lines.push(`## ${tr("三、下周建议重点", "3. Suggested priorities for next week")}`);
     const focus = activeTasks.filter((t)=>t.score>=9).slice(0,3);
-    if (!focus.length) lines.push("- 重新规划：当前没有高优先级事项，补录项目下一步。");
-    else focus.forEach((t) => lines.push(`- ${t.title}（分 ${t.score}，${CATS[t.cat]?.label||t.cat}${t.project_id?"，隶属项目":""}）`));
+    if (!focus.length) lines.push(`- ${tr("重新规划：当前没有高优先级事项，补录项目下一步。", "No high-priority tasks. Add the next step from a project.")}`);
+    else focus.forEach((t) => lines.push(`- ${t.title} (${tr("分", "score")} ${t.score}, ${en ? ({wetlab:"Wet lab",analysis:"Analysis / pipeline",paper:"Writing",project:"Project work",literature:"Reading",meeting:"Meetings / talks",admin:"Admin / communication"}[t.cat] || t.cat) : (CATS[t.cat]?.label||t.cat)}${t.project_id?", "+tr("隶属项目", "project task"):""})`));
     activeProjects.slice(0,2).forEach((p) => {
       const next = nextMilestone(p);
-      if (next) lines.push(`- 项目推进：${p.title} → ${next.title}`);
+      if (next) lines.push(`- ${tr("项目推进：", "Project next step: ")}${p.title} → ${next.title}`);
     });
     lines.push("");
-    lines.push("## 四、阻塞与需协调");
-    if (!blockers.length) lines.push("- 无记录阻塞");
+    lines.push(`## ${tr("四、阻塞与需协调", "4. Blockers and coordination")}`);
+    if (!blockers.length) lines.push(`- ${tr("无记录阻塞", "No blockers recorded")}`);
     else blockers.forEach((b) => lines.push(`- ${b}`));
     lines.push("");
-    lines.push("## 五、可写进材料的产出提示");
+    lines.push(`## ${tr("五、可写进材料的产出提示", "5. Outputs to include in reports")}`);
     const withNotes = doneThisWeek.filter((t)=>t.result_note);
-    if (!withNotes.length) lines.push("- 完成事项时尽量补一句结果备注，周报会自动汇总到这里。");
-    else withNotes.forEach((t) => lines.push(`- ${t.title}：${t.result_note}`));
+    if (!withNotes.length) lines.push(`- ${tr("完成事项时尽量补一句结果备注，周报会自动汇总到这里。", "Add a result note when you complete a task; it will appear in the weekly report.")}`);
+    else withNotes.forEach((t) => lines.push(`- ${t.title}: ${t.result_note}`));
     return lines.join("\n");
   }
 
   function render() {
+    $("exampleWelcome").hidden = ['projects','tasks','experiments'].some(key=>state[key].length>0);
+    $("plantExampleNotice").hidden = !['projects','tasks','experiments'].some(key=>state[key].some(item=>item.example_set===PlantExamples.SET));
     renderStats();
-    document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.getAttribute("data-tab")===tab));
-    $("view-board").hidden = tab !== "board";
-    $("view-projects").hidden = tab !== "projects";
-    $("view-review").hidden = tab !== "review";
+    const labActive = document.getElementById("labTab")?.classList.contains("on");
+    document.querySelectorAll(".tab[data-tab]").forEach((b) => {const selected=!labActive && b.getAttribute("data-tab")===tab;b.classList.toggle("on",selected);b.setAttribute("aria-selected",String(selected));});
+    $("view-board").hidden = labActive || tab !== "board";
+    $("view-projects").hidden = labActive || tab !== "projects";
+    $("view-review").hidden = labActive || tab !== "review";
     if (tab === "board") renderBoard();
     if (tab === "projects") renderProjects();
     if (tab === "review") renderReview();
   }
 
   /* forms */
+  const deletionText = (zh, en) => document.documentElement.lang === "en" ? en : zh;
+
+  function latestDeletionData() {
+    const stored = localStorage.getItem(STORE_KEY);
+    return stored ? JSON.parse(stored) : structuredClone(state);
+  }
+
+  function deletionError(error) {
+    const code = error?.message || String(error);
+    if (code === "PROJECT_NOT_FOUND") return deletionText("项目已被删除，请关闭窗口查看最新列表。", "This project has already been deleted. Close this dialog to view the updated list.");
+    if (code === "PROJECT_CHANGED") return deletionText("项目或关联记录已更新，请重新核对后确认删除。", "The project or its linked records have changed. Review the updated details and confirm again.");
+    return deletionText("删除未完成，记录已保留。请检查存储空间和目录权限后重试。", "Deletion could not be completed. Your records have been kept. Check available storage and folder permissions, then try again.");
+  }
+
+  async function openProjectDeletion(projectId, notice = "") {
+    if (formMode?.type === "delete-project" && formMode.saving) return;
+    const mode = { type: "delete-project", id: projectId, saving: false, plan: null };
+    formMode = mode;
+    openSheet('<div class="wizard-head"><h2>' + deletionText("删除项目", "Delete project") + '</h2><p role="status">' + deletionText("正在读取关联记录…", "Loading linked records…") + '</p></div><button class="btn btn-ghost" type="button" data-form="cancel">' + deletionText("取消", "Cancel") + '</button>');
+    try {
+      const response = window.shixu && !isDemoShot
+        ? await window.shixu.projectDeletionPlan(projectId)
+        : { ok: true, plan: ResearchCore.projectDeletionPlan(latestDeletionData(), projectId) };
+      if (formMode !== mode) return;
+      if (!response.ok) throw new Error(response.error);
+      const plan = response.plan;
+      mode.plan = plan;
+      const sharedNote = plan.sharedExperimentIds.length
+        ? deletionText(
+          plan.sharedExperimentIds.length + " 条实验记录被其他项目引用，将保留并解除与本项目的关联。",
+          plan.sharedExperimentIds.length + " experiments are referenced by other projects and will be kept with this project link removed.") : "";
+      const linkedNote = plan.linkedExperimentIds.length
+        ? deletionText(
+          "另外 " + plan.linkedExperimentIds.length + " 条仅被引用的实验记录会保留。",
+          "A further " + plan.linkedExperimentIds.length + " referenced experiments will also be kept.") : "";
+      openSheet(
+        '<div class="wizard-head"><h2>' + deletionText("删除项目", "Delete project") + '</h2>' +
+        '<p data-user-copy style="overflow-wrap:anywhere"><strong>' + esc(plan.title) + '</strong></p></div>' +
+        '<p>' + deletionText("将删除此项目的研究问题、分析流程、结果证据、结论及项目总结。", "This will remove the project, including its research question, analysis workflow, evidence, conclusions, and project summary.") + '</p>' +
+        '<p>' + deletionText("关联事项：", "Associated tasks: ") + plan.taskIds.length + ' · ' + deletionText("关联实验：", "Associated experiments: ") + plan.experimentIds.length + '</p>' +
+        '<fieldset class="research-source-list"><legend>' + deletionText("可选：同时删除关联记录", "Optional: delete associated records") + '</legend>' +
+        '<label class="research-source-choice"><input id="deleteProjectTasks" type="checkbox"' + (plan.taskIds.length ? '' : ' disabled') + '><span>' + deletionText("同时删除关联事项", "Also delete associated tasks") + '</span></label>' +
+        '<label class="research-source-choice"><input id="deleteProjectExperiments" type="checkbox"' + (plan.experimentIds.length > plan.sharedExperimentIds.length ? '' : ' disabled') + '><span>' + deletionText("同时删除关联实验", "Also delete associated experiments") + '</span></label></fieldset>' +
+        '<p>' + deletionText("默认保留事项和实验记录，仅解除项目关联；保留的事项会清除分析步骤关联。", "By default, tasks and experiments are kept and unassigned from this project. Retained tasks also have their analysis step link cleared.") + '</p>' +
+        (sharedNote ? '<p>' + sharedNote + '</p>' : '') + (linkedNote ? '<p>' + linkedNote + '</p>' : '') +
+        '<p>' + deletionText("删除前将自动备份。关联的电脑文件不会删除。", "A backup will be saved before deletion. Linked files on your computer will be kept.") + '</p>' +
+        '<p id="deleteProjectError" class="research-warning" role="alert"' + (notice ? '' : ' hidden') + '>' + esc(notice) + '</p>' +
+        '<div class="wizard-nav"><button class="btn btn-ghost" type="button" data-form="cancel">' + deletionText("取消", "Cancel") + '</button>' +
+        '<button class="btn btn-danger-ghost" type="button" data-form="confirm-delete-project">' + deletionText("确认删除项目", "Delete project") + '</button></div>');
+    } catch (error) {
+      if (formMode !== mode) return;
+      openSheet('<div class="wizard-head"><h2>' + deletionText("删除项目", "Delete project") + '</h2></div><p class="research-warning" role="alert">' + esc(deletionError(error)) + '</p><div class="wizard-nav"><button class="btn btn-ghost" type="button" data-form="cancel">' + deletionText("关闭", "Close") + '</button><button class="btn btn-ghost" type="button" data-form="refresh-project-deletion">' + deletionText("重试", "Retry") + '</button></div>');
+    }
+  }
+
+  async function confirmProjectDeletion() {
+    const mode = formMode;
+    if (mode?.type !== "delete-project" || mode.saving || !mode.plan) return;
+    const options = {
+      fingerprint: mode.plan.fingerprint,
+      deleteTasks: $("deleteProjectTasks").checked,
+      deleteExperiments: $("deleteProjectExperiments").checked
+    };
+    const controls = Array.from(els.formBody.querySelectorAll("button,input"));
+    const disabled = controls.map(control => control.disabled);
+    mode.saving = true;
+    controls.forEach(control => { control.disabled = true; });
+    const errorMessage = $("deleteProjectError");
+    errorMessage.hidden = true;
+    try {
+      let result;
+      if (window.shixu && !isDemoShot) {
+        result = await window.shixu.deleteProject(mode.id, options);
+        if (!result.ok) throw new Error(result.error);
+      } else {
+        const current = latestDeletionData();
+        result = ResearchCore.deleteProject(current, mode.id, options);
+        localStorage.setItem(STORE_KEY + "-before-project-delete-" + uid("backup"), JSON.stringify(current));
+        localStorage.setItem(STORE_KEY, JSON.stringify(result.data));
+      }
+      applyExternalState(result.data);
+      mode.saving = false;
+      closeSheet();
+      document.dispatchEvent(new CustomEvent("shixu-data", { detail: { source: "tasks", data: state } }));
+      render();
+      toast(deletionText("项目已删除，已保存删除前备份。", "Project deleted. A backup was saved before deletion."));
+    } catch (error) {
+      mode.saving = false;
+      if (formMode !== mode) return;
+      if (error.message === "PROJECT_CHANGED") {
+        await openProjectDeletion(mode.id, deletionError(error));
+        return;
+      }
+      controls.forEach((control, index) => { control.disabled = disabled[index]; });
+      errorMessage.textContent = deletionError(error);
+      errorMessage.hidden = false;
+    }
+  }
+
   function openSheet(html) {
     els.formBody.innerHTML = html;
     els.formSheet.classList.add("open");
   }
   function closeSheet() {
+    if (formMode?.type === "delete-project" && formMode.saving) return;
     els.formSheet.classList.remove("open");
     formMode = null;
   }
@@ -809,7 +988,7 @@
   function openTaskForm(taskId) {
     const t = taskId ? state.tasks.find((x)=>x.id===taskId) : null;
     formMode = { type: "task", id: taskId || null };
-    const projOpts = [`<option value="">（不关联项目）</option>`].concat(state.projects.map((p)=>`<option value="${p.id}" ${t&&t.project_id===p.id?"selected":""}>${esc(p.title)}</option>`)).join("");
+    const projOpts = [`<option value="">（不关联项目）</option>`].concat(state.projects.map((p)=>`<option data-user-copy value="${p.id}" ${t&&t.project_id===p.id?"selected":""}>${esc(p.title)}</option>`)).join("");
     openSheet(`
       <div class="wizard-step-label">${t?"编辑事项":"录入事项"}</div>
       <div class="wizard-q">${t?"修改事项":"这是一件什么事？"}</div>
@@ -846,7 +1025,9 @@
   function openProjectForm(projectId) {
     const p = projectId ? state.projects.find((x)=>x.id===projectId) : null;
     formMode = { type: "project", id: projectId || null };
-    const msText = p ? p.milestones.map((m)=>m.title).join("\n") : "数据/材料就绪\n核心结果/初稿\n图表与方法\n讨论或润色\n提交/交付";
+    const msText = p ? p.milestones.map((m)=>m.title).join("\n") : document.documentElement.lang === "en"
+      ? "Data and materials ready\nKey results / first draft\nFigures and methods\nDiscussion and references\nSubmit / deliver"
+      : "数据/材料就绪\n核心结果/初稿\n图表与方法\n讨论或润色\n提交/交付";
     openSheet(`
       <div class="wizard-step-label">${p?"编辑项目":"新建长期项目"}</div>
       <div class="wizard-q">长期工作怎么拆？</div>
@@ -859,6 +1040,7 @@
       <div class="field"><label>已投入工时</label><input id="p_spent" type="number" min="0" step="0.25" value="${p?p.time_spent_hours:0}" /></div>
       <div class="field"><label>当前阻塞</label><input id="p_block" value="${esc(p?p.blocker:"")}" /></div>
       <div class="field"><label>里程碑（每行一个）</label><textarea id="p_ms" rows="6">${esc(msText)}</textarea></div>
+      ${ResearchUI.formFields(p)}
       <div class="wizard-nav">
         <button class="btn btn-ghost" type="button" data-form="cancel">取消</button>
         <button class="btn btn-primary" type="button" data-form="save-project">${p?"保存项目":"创建项目"}</button>
@@ -932,6 +1114,7 @@
       return prev || { id: "m"+(i+1), title, done: false, doneAt: null, deadline: "" };
     });
     const payload = {
+      ...old,
       id: formMode && formMode.id ? formMode.id : uid("p"),
       title,
       cat: $("p_cat").value,
@@ -946,6 +1129,7 @@
       completedAt: old ? old.completedAt : null,
       milestones
     };
+    Object.assign(payload, ResearchUI.collectForm(payload));
     if (old) {
       state.projects = state.projects.map((p)=>p.id===old.id ? normalizeProject(payload) : p);
     } else {
@@ -956,7 +1140,13 @@
 
   /* desktop sync: Electron IPC 优先，浏览器模式回退 localStorage */
   function setDeskStatus(ok, text) {
-    els.deskStatus.textContent = (ok?"● ":"○ ") + text;
+    const messages = {
+      "桌面应用 · 数据自动同步": "Desktop app · data syncs automatically",
+      "浏览器本地预览 · 数据仅存此浏览器": "Browser preview · data stays in this browser",
+      "保存失败，请检查磁盘权限": "Save failed. Check disk permissions."
+    };
+    const label = document.documentElement.lang === "en" ? (messages[text] || text) : text;
+    els.deskStatus.textContent = (ok?"● ":"○ ") + label;
     els.deskStatus.style.color = ok ? "var(--week)" : "var(--muted)";
   }
 
@@ -978,25 +1168,9 @@
         return true;
       } catch (_) {}
     }
-    try {
-      const res = await fetch(DESK_API + "/tasks", { cache: "no-store" });
-      if (!res.ok) throw new Error("bad");
-      const data = await res.json();
-      if (!Array.isArray(data.tasks)) throw new Error("bad shape");
-      if (!Array.isArray(data.projects)) data.projects = [];
-      applyExternalState(data);
-      setDeskStatus(true, "已连接本机悬浮窗 · 双向同步");
-      render();
-      if (notify) toast("已从桌面刷新");
-      return true;
-    } catch (_) {
-      if (window.shixu) {
-        setDeskStatus(true, "桌面应用 · 数据在本机用户目录");
-        return true;
-      }
-      setDeskStatus(false, "未检测到桌面悬浮窗（个人版可先运行 启动时序助手.bat）");
-      return false;
-    }
+    setDeskStatus(false, "浏览器本地预览 · 数据仅存此浏览器");
+    if (notify) toast("已刷新浏览器本地数据");
+    return true;
   }
 
   async function pushToDesktop(notify) {
@@ -1009,24 +1183,13 @@
         return true;
       } catch (_) {
         setDeskStatus(false, "保存失败，请检查磁盘权限");
+        toast("保存失败，请导出备份后重试");
         return false;
       }
     }
-    try {
-      const res = await fetch(DESK_API + "/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state)
-      });
-      if (!res.ok) throw new Error("bad");
-      setDeskStatus(true, "已连接本机悬浮窗 · 双向同步");
-      if (notify) toast("已写入桌面悬浮窗");
-      return true;
-    } catch (_) {
-      setDeskStatus(false, "未检测到桌面悬浮窗；数据仍在浏览器本地");
-      if (notify) toast("桌面端未运行，数据在浏览器本地保留");
-      return false;
-    }
+    setDeskStatus(false, "浏览器本地预览 · 数据仅存此浏览器");
+    if (notify) toast("数据在浏览器本地保留");
+    return true;
   }
 
   function download(filename, content, type="text/plain") {
@@ -1040,12 +1203,27 @@
 
   /* events */
   document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => {
+    document.getElementById("labTab")?.classList.remove("on");
     tab = btn.getAttribute("data-tab");
     render();
   }));
   $("btnAddTask").addEventListener("click", () => openTaskForm(null));
   $("btnAddProject").addEventListener("click", () => openProjectForm(null));
   $("btnAddProject2").addEventListener("click", () => openProjectForm(null));
+  async function loadPlantExamples(button,language,addExamples=PlantExamples.add) {
+    const english=document.documentElement.lang==='en';button.disabled=true;
+    try {
+      const next=normalizeState(addExamples(state,language));
+      if(['projects','tasks','experiments'].every(key=>next[key].length===state[key].length)) {toast(english?'Plant examples are already loaded':'植物研究示例已存在');return;}
+      if(window.shixu&&!isDemoShot)applyExternalState(await window.shixu.save(next));
+      else {localStorage.setItem(STORE_KEY,JSON.stringify(next));state=next;}
+      document.dispatchEvent(new CustomEvent('shixu-data',{detail:{source:'tasks',data:state}}));render();
+      toast(english?'Plant research examples loaded':'已载入植物研究示例');
+    } catch(err) {toast((english?'Could not load examples: ':'示例载入失败：')+err.message);}
+    finally {button.disabled=false;}
+  }
+  $("btnPlantExamples").addEventListener("click", () => loadPlantExamples($("btnPlantExamples"),'en',current=>PlantExamples.addEnglish(current)));
+  $("btnWelcomeExamples").addEventListener("click", () => loadPlantExamples($("btnWelcomeExamples"),'en',current=>PlantExamples.addEnglish(current)));
   $("btnSyncDesk").addEventListener("click", async () => { if (!(await pullFromDesktop(true))) await pushToDesktop(true); });
   $("btnSyncDesk2").addEventListener("click", async () => { if (!(await pullFromDesktop(true))) await pushToDesktop(true); });
   $("btnGenSummary").addEventListener("click", () => {
@@ -1056,9 +1234,9 @@
     toast("已生成本周总结草稿");
   });
   $("btnExportSummary").addEventListener("click", () => {
-    const text = els.summaryOut.textContent && !els.summaryOut.textContent.startsWith("点「") ? els.summaryOut.textContent : buildWeeklySummary();
+    const text = els.summaryOut.textContent?.startsWith("# ") ? els.summaryOut.textContent : buildWeeklySummary();
     const d = new Date();
-    const name = `周报-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.md`;
+    const name = `${document.documentElement.lang === "en" ? "weekly-report" : "周报"}-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.md`;
     download(name, text, "text/markdown");
     toast("已导出 Markdown");
   });
@@ -1085,9 +1263,16 @@
     const text = await file.text();
     const data = JSON.parse(text);
     if (!data || !Array.isArray(data.tasks)) throw new Error("缺少 tasks");
-    state = normalizeState(data);
+    const incoming = normalizeState(data);
+    const message = document.documentElement.lang === "en"
+      ? "Importing will replace current data. Export a backup before continuing. Continue?"
+      : "导入将替换当前数据。请先导出备份。继续？";
+    if (!confirm(message)) return false;
+    download("shixu-before-import.json", JSON.stringify(state,null,2), "application/json");
+    state = incoming;
     saveState(true);
     render();
+    return true;
   }
 
   async function doImportDesk() {
@@ -1099,8 +1284,7 @@
         const f = input.files && input.files[0];
         if (!f) return;
         try {
-          await importFromFileInput(f);
-          toast("已导入数据");
+          if (await importFromFileInput(f)) toast("已导入数据");
         } catch (err) {
           toast("导入失败：" + (err.message || err));
         }
@@ -1112,7 +1296,7 @@
     if (ret && ret.ok) {
       applyExternalState(ret.data);
       render();
-      toast(`已导入 ${ret.taskCount || 0} 条事项`);
+      toast(document.documentElement.lang === "en" ? `Imported ${ret.taskCount || 0} tasks` : `已导入 ${ret.taskCount || 0} 条事项`);
     } else if (ret && ret.canceled) {
       toast("已取消导入");
     } else {
@@ -1123,38 +1307,9 @@
   $("btnImportDesk") && $("btnImportDesk").addEventListener("click", doImportDesk);
   $("btnImportAll") && $("btnImportAll").addEventListener("click", doImportDesk);
 
-  async function refreshAutoStartLabel() {
-    const btn = $("btnAutoStart");
-    if (!btn) return;
-    if (!window.shixu || !window.shixu.getAutoStart) {
-      btn.textContent = "开机自启：仅桌面版";
-      btn.disabled = true;
-      return;
-    }
-    try {
-      const info = await window.shixu.getAutoStart();
-      const on = !!(info && info.openAtLogin);
-      btn.textContent = on ? "开机自启：开" : "开机自启：关";
-      btn.dataset.on = on ? "1" : "0";
-    } catch (_) {
-      btn.textContent = "开机自启：未知";
-    }
-  }
-
-  $("btnAutoStart") && $("btnAutoStart").addEventListener("click", async () => {
-    const btn = $("btnAutoStart");
-    if (!window.shixu || !window.shixu.setAutoStart) return;
-    const next = !(btn.dataset.on === "1");
-    try {
-      const info = await window.shixu.setAutoStart(next);
-      const on = !!(info && info.openAtLogin);
-      btn.dataset.on = on ? "1" : "0";
-      btn.textContent = on ? "开机自启：开" : "开机自启：关";
-      toast(on ? "已开启开机自启" : "已关闭开机自启");
-    } catch (err) {
-      toast("设置失败：" + (err.message || err));
-    }
-  });
+  const autoStartControl=AutoStartUI.create({button:$("btnAutoStart"),api:window.shixu,lang:document.documentElement.lang,toast});
+  function refreshAutoStartLabel() {return autoStartControl.refresh();}
+  window.addEventListener('focus',refreshAutoStartLabel);
 
   $("btnRevealData") && $("btnRevealData").addEventListener("click", async () => {
     if (!window.shixu || !window.shixu.revealData) { toast("数据在浏览器本地"); return; }
@@ -1215,6 +1370,8 @@
     if (!f) return;
     const k = f.getAttribute("data-form");
     if (k==="cancel") closeSheet();
+    if (k==="confirm-delete-project") await confirmProjectDeletion();
+    if (k==="refresh-project-deletion" && formMode?.type === "delete-project") await openProjectDeletion(formMode.id);
     if (k==="save-task") saveTaskFromForm();
     if (k==="save-project") saveProjectFromForm();
     if (k==="save-prog") {
@@ -1240,6 +1397,7 @@
     if (action==="edit-task") openTaskForm(id);
     if (action==="prog") openProgressForm(id);
     if (action==="del") {
+      if (!confirm(document.documentElement.lang === "en" ? "Delete this task?" : "删除此事项？")) return;
       state.tasks = state.tasks.filter((t)=>t.id!==id);
       saveState(true); render(); toast("已删除");
     }
@@ -1274,7 +1432,7 @@
       const t = state.tasks.find((x)=>x.id===id);
       if (!t) return;
       t.time_spent = Math.round(((Number(t.time_spent)||0) + Number(btn.getAttribute("data-h"))) * 100) / 100;
-      saveState(true); render(); toast(`已记 +${btn.getAttribute("data-h")}h · 合计 ${t.time_spent}h`);
+      saveState(true); render(); toast(document.documentElement.lang === "en" ? `Logged +${btn.getAttribute("data-h")}h · total ${t.time_spent}h` : `已记 +${btn.getAttribute("data-h")}h · 合计 ${t.time_spent}h`);
     }
     if (action==="from-project" || action==="task-from-project") {
       const pid = btn.getAttribute("data-project");
@@ -1313,10 +1471,11 @@
     if (!btn) return;
     const action = btn.getAttribute("data-action");
     const pid = btn.getAttribute("data-project");
+    if (action==="add-project") { openProjectForm(null); return; }
     const p = state.projects.find((x)=>x.id===pid);
     if (!p) return;
 
-    if (action==="add-project") openProjectForm(null);
+    if (action==="delete-project") { openProjectDeletion(pid); return; }
     if (action==="edit-project") openProjectForm(pid);
     if (action==="ms") {
       const mid = btn.getAttribute("data-ms");
@@ -1328,12 +1487,12 @@
         // keep active until user archives
       }
       saveState(true); render();
-      toast(m.done ? `完成里程碑：${m.title}` : `已取消完成：${m.title}`);
+      toast(document.documentElement.lang === "en" ? (m.done ? "Milestone completed" : "Milestone reopened") : (m.done ? "完成里程碑" : "已取消完成"));
     }
     if (action==="time-proj") {
       const h = Number(btn.getAttribute("data-h"))||0;
       p.time_spent_hours = Math.round(((Number(p.time_spent_hours)||0)+h)*100)/100;
-      saveState(true); render(); toast(`项目工时 +${h}h · 合计 ${p.time_spent_hours}h`);
+      saveState(true); render(); toast(document.documentElement.lang === "en" ? `Project hours +${h}h · total ${p.time_spent_hours}h` : `项目工时 +${h}h · 合计 ${p.time_spent_hours}h`);
     }
     if (action==="task-from-project") {
       const next = nextMilestone(p);
@@ -1355,11 +1514,18 @@
     if (action==="archive-project") {
       const doneC = p.milestones.filter((m)=>m.done).length;
       const allDone = p.milestones.length>0 && doneC===p.milestones.length;
-      if (!allDone && !confirm(`还有 ${p.milestones.length-doneC} 个里程碑未完成，仍要归档「${p.title}」吗？`)) return;
+      if (!allDone) {
+        const message = document.documentElement.lang === "en"
+          ? `${p.milestones.length-doneC} milestones are unfinished. Archive "${p.title}" anyway?`
+          : `还有 ${p.milestones.length-doneC} 个里程碑未完成，仍要归档「${p.title}」吗？`;
+        if (!confirm(message)) return;
+      }
       p.status = "done";
       p.completedAt = new Date().toISOString();
       if (!p.summary) {
-        p.summary = `归档时进度 ${projProgress(p)}%，投入 ${p.time_spent_hours}h/${p.time_planned_hours}h。`;
+        p.summary = document.documentElement.lang === "en"
+          ? `Progress at archive: ${projProgress(p)}%; hours logged ${p.time_spent_hours}h / ${p.time_planned_hours}h.`
+          : `归档时进度 ${projProgress(p)}%，投入 ${p.time_spent_hours}h/${p.time_planned_hours}h。`;
       }
       saveState(true); render(); toast("项目已归档，可在「回看」查看");
     }
@@ -1376,50 +1542,40 @@
     <div class="panel"><h3>桌面应用</h3><ul><li>一键导出 / 导入 JSON</li><li>开机自启开关</li><li>托盘菜单也可导入导出</li><li>数据在用户目录，与个人版隔离</li></ul></div>
   `;
 
-  // 文档截图 / 预览：?demo=1 载入示例数据（不影响正常使用）
-  if (new URLSearchParams(location.search).get("demo") === "1") {
-    state = normalizeState({
-      version: 3,
-      slot: "60",
-      capacity_hours: 6,
-      projects: [
-        {
-          id: "p_demo", title: "小麦 sRNA / TE 相关论文", cat: "paper", deadline: "three_days",
-          deadline_date: "2026-10-20", status: "active", time_planned_hours: 40, time_spent_hours: 12.5,
-          blocker: "等补充甲基化对照结果",
-          milestones: [
-            { id: "m1", title: "分析结果冻结 / 主表就绪", done: true, doneAt: "2026-09-10" },
-            { id: "m2", title: "主图 + 图注定稿", done: false, deadline: "2026-09-28" },
-            { id: "m3", title: "Methods / 结果初稿", done: false, deadline: "2026-10-05" },
-            { id: "m4", title: "讨论与参考文献", done: false, deadline: "2026-10-12" },
-            { id: "m5", title: "投稿包提交", done: false, deadline: "2026-10-20" }
-          ]
-        },
-        {
-          id: "p_demo2", title: "甲基化分析平台优化", cat: "analysis", deadline: "this_week",
-          deadline_date: "2026-09-30", status: "active", time_planned_hours: 24, time_spent_hours: 8,
-          blocker: "",
-          milestones: [
-            { id: "m1", title: "预处理模块验收", done: true, doneAt: "2026-08-20" },
-            { id: "m2", title: "联合分析 API 稳定", done: true, doneAt: "2026-09-05" },
-            { id: "m3", title: "湿实验用户路径优化", done: false, deadline: "2026-09-25" },
-            { id: "m4", title: "英文 UI 与报告导出", done: false, deadline: "2026-09-30" }
-          ]
-        }
-      ],
-      tasks: [
-        { id: "t1", title: "完成 DMR 与 DEG 关联主图", cat: "analysis", deadline: "today", impact: "others", effort: "h2", flex: "only_me", focus: "deep", progress: 40, time_planned: 3, time_spent: 1, project_id: "p_demo", createdAt: 1 },
-        { id: "t2", title: "改论文 Results 第三段与图注", cat: "paper", deadline: "three_days", impact: "severe", effort: "h2", flex: "only_me", focus: "deep", progress: 20, time_planned: 2, time_spent: 0.5, project_id: "p_demo", createdAt: 2 },
-        { id: "t3", title: "组会汇报：准备 3 页进度", cat: "meeting", deadline: "today", impact: "mild", effort: "h1", flex: "only_me", focus: "shallow", progress: 0, time_planned: 1, time_spent: 0, createdAt: 3 },
-        { id: "t4", title: "回复合作者：数据格式与时间点", cat: "admin", deadline: "today", impact: "others", effort: "m15", flex: "only_me", focus: "shallow", progress: 0, time_planned: 0.25, time_spent: 0, createdAt: 4 },
-        { id: "t5", title: "扫 5 篇甲基化 + TE 新文献摘要", cat: "literature", deadline: "this_week", impact: "mild", effort: "m30", flex: "deferrable", focus: "shallow", progress: 0, time_planned: 0.5, time_spent: 0, createdAt: 5 },
-        { id: "t6", title: "整理样本 sheet 与小数据验证脚本", cat: "analysis", deadline: "this_week", impact: "mild", effort: "h1", flex: "only_me", focus: "deep", progress: 100, time_planned: 1, time_spent: 1.2, done: true, completedAt: "2026-09-18T16:20:00", result_note: "小样本脚本通过", createdAt: 0 }
-      ]
-    });
-    saveState(false);
-  }
+  // ?demo=1 uses a separate browser store with the same editable plant examples.
 
   const isDemoShot = new URLSearchParams(location.search).get("demo") === "1";
+  document.addEventListener('shixu-data', event => {
+    if (event.detail.source === 'lab') { applyExternalState(event.detail.data); render(); }
+  });
+  window.addEventListener('storage', event => {
+    if (event.key === STORE_KEY && event.newValue) { applyExternalState(JSON.parse(event.newValue)); render(); }
+  });
+  ResearchUI.setup({
+    getProject: id => state.projects.find(p => p.id === id),
+    getExperiments: () => state.experiments,
+    toast, download,
+    saveProject: async draft => {
+      const latest = state.projects.find(p => p.id === draft.id);
+      if (!latest) throw new Error(document.documentElement.lang === 'en' ? 'Project no longer exists' : '项目已不存在');
+      const next = structuredClone(state);
+      next.projects = next.projects.map(p => p.id === draft.id ? normalizeProject({...latest, analysis_workflow:draft.analysis_workflow, artifacts:draft.artifacts, research_context:draft.research_context, evidence:draft.evidence,linked_experiment_ids:draft.linked_experiment_ids,summary:draft.summary}) : p);
+      if (window.shixu && !isDemoShot) applyExternalState(await window.shixu.save(next));
+      else {localStorage.setItem(STORE_KEY, JSON.stringify(next));state=normalizeState(next);}
+      document.dispatchEvent(new CustomEvent('shixu-data', {detail:{source:'tasks',data:state}}));
+      render();
+    },
+    createTask: async (p,s) => {
+      if(state.tasks.some(t => !t.done && t.project_id === p.id && t.analysis_step_id === s.id)) {
+        toast(document.documentElement.lang === 'en' ? 'An open task already exists for this step' : '该分析步骤已有未完成事项');return false;
+      }
+      const task=normalizeTask({id:uid('t'),title:`【${p.title}】${s.title}`,cat:'analysis',deadline:'today',impact:'others',effort:'h1',flex:'only_me',focus:'deep',project_id:p.id,analysis_step_id:s.id,result_note:s.note});
+      const next=structuredClone(state);next.tasks.unshift(task);
+      if(window.shixu&&!isDemoShot)applyExternalState(await window.shixu.save(next));
+      else {localStorage.setItem(STORE_KEY,JSON.stringify(next));state=normalizeState(next);}
+      document.dispatchEvent(new CustomEvent('shixu-data',{detail:{source:'tasks',data:state}}));render();
+    }
+  });
   render();
   if (!isDemoShot) {
     pullFromDesktop(false);
@@ -1433,5 +1589,6 @@
   }
 })();
 </script>
+<script src="lab-ui.js"></script>
 </body>
 </html>
