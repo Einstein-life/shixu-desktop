@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           APP="mac/${{ matrix.app_dir }}/Shixu Desktop.app"
           test -d "$APP"
-          /usr/bin/lipo -verify_arch ${{ matrix.mach_arch }} "$APP/Contents/MacOS/Shixu Desktop"
+          /usr/bin/lipo "$APP/Contents/MacOS/Shixu Desktop" -verify_arch ${{ matrix.mach_arch }}
           node scripts/verify-packages.cjs "$APP/Contents/Resources/app.asar"
           node scripts/smoke-desktop.cjs "$APP/Contents/MacOS/Shixu Desktop" mac
           mv mac/package-verification.json mac/package-verification-mac-${{ matrix.arch }}.json
