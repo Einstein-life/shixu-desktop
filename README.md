@@ -47,6 +47,10 @@ The project workspace includes 12 editable planning scaffolds covering bulk and 
 
 These scaffolds are for planning and documenting work. They do not install or run analysis pipelines; execute analyses in your validated computing environment.
 
+### Manage projects and desktop access
+
+Projects, examples, and archived projects can be deleted with confirmation. Associated tasks and experiments are kept by default; optional cascade deletion preserves experiments shared by other projects. A backup is required before deletion, and linked files remain on disk. The floating ball stays visible when the main window is minimized. Launching the app again activates the existing application instance.
+
 ## English-first onboarding
 
 A new installation opens in English with an empty workspace. Click **Projects → Load examples** to add six fictional English plant studies, 18 linked tasks and six experiments:
@@ -72,7 +76,7 @@ All example results are fictional. File paths are placeholders. Replace them wit
 |:---:|:---:|
 | ![English review and generated weekly summary](docs/images/app-review-en.png) | ![Expanded floating panel with English plant research tasks](docs/images/dock-expanded-en.png) |
 
-Screenshots show the English interface screenshots
+Screenshots show the English interface with the optional plant research examples loaded.
 
 ## Run from source
 
@@ -103,9 +107,9 @@ For compatibility, this release retains the existing `Shixu Desktop 2 Beta` data
 
 ## Validation and scope
 
-Release v1.0.1 passed 90 automated tests and cross-platform packaging checks. Validation included Windows installer, startup and uninstall checks, packaged-source verification, macOS ad-hoc signature checks, mounted DMG verification, ZIP integrity and an Apple Silicon startup check using an isolated empty workspace. See [release validation](docs/VALIDATION.md) and download `SHA256SUMS.txt` from the [release](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.1) to verify installer files.
+The v1.0.1 verification set includes source checks, 90 automated tests, packaged-source verification and startup checks on Windows x64, macOS Intel and Apple Silicon using isolated empty workspaces. Nine project-deletion UI checks were also performed in Electron on Windows. See [release validation](docs/VALIDATION.md) and the platform JSON reports attached to the [release](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.1). Download `SHA256SUMS.txt` to verify the installer files.
 
-These checks do not replace interactive acceptance on every operating system or device. Native Intel Mac startup has not been verified. Shixu complements laboratory SOPs, ELN/LIMS systems and workflow engines; it is not a regulated immutable audit trail and does not automatically execute bioinformatics pipelines.
+These checks cover automated behavior, packaged source and first-run startup; full manual install/uninstall acceptance, visual layout and native notifications require testing on the target device. Shixu complements laboratory SOPs, ELN/LIMS systems and workflow engines; it does not provide a regulated immutable audit trail or automatically execute bioinformatics pipelines.
 
 ## Citation and support
 
@@ -114,9 +118,3 @@ For research-software evaluations, cite the software version and report the oper
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-## Project management and desktop behavior
-
-Projects, examples, and archived projects can be deleted with confirmation. Associated tasks and experiments are kept by default; optional cascade deletion preserves experiments shared by other projects. A backup is required before deletion, and linked files remain on disk. The floating ball stays visible when the main window is minimized. Launching the app again activates the existing application instance.
-
-See [current validation details](docs/VALIDATION.md) for the scope of package checks.
