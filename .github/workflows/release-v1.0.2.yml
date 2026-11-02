@@ -1,0 +1,150 @@
+name: Release v1.0.2 desktop packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-v1.0.2
+  cancel-in-progress: false
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run localize
+      - run: npm run check
+      - run: npm test
+      - run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify packaged source and fresh startup
+        shell: pwsh
+        run: |
+          node scripts/verify-packages.cjs win/win-unpacked/resources/app.asar
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged source mismatch' }
+          node scripts/smoke-desktop.cjs 'win/win-unpacked/Shixu Desktop.exe' win
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged startup failed' }
+          Move-Item -LiteralPath win/startup-smoke.json -Destination win/startup-smoke-win-x64.json
+      - name: Install previous version and upgrade with isolated records
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $oldDir=Join-Path $env:RUNNER_TEMP 'shixu-previous-installer'
+          $installDir=Join-Path $env:RUNNER_TEMP 'shixu-upgrade-install'
+          $profileDir=Join-Path $env:RUNNER_TEMP 'shixu-upgrade-profile'
+          gh release download v1.0.1 --repo $env:GITHUB_REPOSITORY --pattern 'Shixu-Desktop-1.0.1-win-x64.exe' --dir $oldDir
+          if ($LASTEXITCODE -ne 0) { throw 'Previous installer download failed' }
+          $oldInstaller=Join-Path $oldDir 'Shixu-Desktop-1.0.1-win-x64.exe'
+          $oldInstall=Start-Process -FilePath $oldInstaller -ArgumentList @('/S',"/D=$installDir") -Wait -PassThru -WindowStyle Hidden
+          if ($oldInstall.ExitCode -ne 0) { throw 'Previous installer failed' }
+          $exe=Join-Path $installDir 'Shixu Desktop.exe'
+          if (!(Test-Path -LiteralPath $exe)) { throw 'Previous app missing' }
+          node scripts/smoke-upgrade.cjs prepare $profileDir
+          if ($LASTEXITCODE -ne 0) { throw 'Fixture preparation failed' }
+          node scripts/smoke-upgrade.cjs check $exe $profileDir win/preserved-data-previous-win-x64.json
+          if ($LASTEXITCODE -ne 0) { throw 'Previous app did not retain fixture' }
+          $newInstaller=(Resolve-Path -LiteralPath win/Shixu-Desktop-1.0.2-win-x64.exe).Path
+          $newInstall=Start-Process -FilePath $newInstaller -ArgumentList @('/S',"/D=$installDir") -Wait -PassThru -WindowStyle Hidden
+          if ($newInstall.ExitCode -ne 0) { throw 'Upgrade installer failed' }
+          $fileVersion=(Get-Item -LiteralPath $exe).VersionInfo.FileVersion
+          if ($fileVersion -notmatch '^1\.0\.2(?:\.|$)') { throw "Unexpected installed version: $fileVersion" }
+          node scripts/verify-packages.cjs (Join-Path $installDir 'resources/app.asar')
+          if ($LASTEXITCODE -ne 0) { throw 'Installed source mismatch' }
+          node scripts/smoke-upgrade.cjs check $exe $profileDir win/preserved-data-upgraded-win-x64.json
+          if ($LASTEXITCODE -ne 0) { throw 'Upgraded app did not retain records' }
+          Move-Item -LiteralPath win/package-verification.json -Destination win/package-verification-win-x64.json
+          @{previousVersion='1.0.1';installedVersion=$fileVersion;installedInPlace=$true;recordsRetained=$true;syntheticData=$true;checkedAt=(Get-Date).ToUniversalTime().ToString('o')} | ConvertTo-Json | Set-Content win/upgrade-validation-win-x64.json
+      - name: Calculate Windows checksums
+        shell: pwsh
+        run: |
+          node scripts/release-checksums.cjs win
+          Move-Item -LiteralPath win/SHA256SUMS.txt -Destination win/SHA256SUMS-win-x64.txt
+      - name: Attach verified Windows assets to draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v1.0.2 --json isDraft,targetCommitish > existing-release.json
+          node -e "const r=require('./existing-release.json');if(!r.isDraft||r.targetCommitish!==process.env.GITHUB_SHA)throw Error('Draft release does not match build commit')"
+          gh release upload v1.0.2 win/*-win-x64.* --clobber
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-validation
+          path: |
+            win/*.json
+            win/*.txt
+            win/builder-debug.yml
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x64
+            app_dir: mac
+            mach_arch: x86_64
+          - runner: macos-15
+            arch: arm64
+            app_dir: mac-arm64
+            mach_arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run localize
+      - run: npm run check
+      - run: npm test
+      - run: node scripts/make-icns.js
+      - name: Verify native runner and build packages
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          node -e "if(process.arch!=='${{ matrix.arch }}')throw Error('Native architecture mismatch')"
+          npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never --config.directories.output=mac
+      - name: Verify source, signatures, archives and retained records
+        run: |
+          set -euo pipefail
+          APP="mac/${{ matrix.app_dir }}/Shixu Desktop.app"
+          /usr/bin/lipo "$APP/Contents/MacOS/Shixu Desktop" -verify_arch ${{ matrix.mach_arch }}
+          codesign --verify --deep --strict "$APP"
+          node scripts/verify-packages.cjs "$APP/Contents/Resources/app.asar"
+          node scripts/smoke-desktop.cjs "$APP/Contents/MacOS/Shixu Desktop" mac
+          PROFILE="$RUNNER_TEMP/shixu-retained-profile"
+          node scripts/smoke-upgrade.cjs prepare "$PROFILE"
+          node scripts/smoke-upgrade.cjs check "$APP/Contents/MacOS/Shixu Desktop" "$PROFILE" mac/preserved-data-mac-${{ matrix.arch }}.json
+          hdiutil verify mac/Shixu-Desktop-1.0.2-mac-${{ matrix.arch }}.dmg
+          unzip -tq mac/Shixu-Desktop-1.0.2-mac-${{ matrix.arch }}.zip
+          mv mac/package-verification.json mac/package-verification-mac-${{ matrix.arch }}.json
+          mv mac/startup-smoke.json mac/startup-smoke-mac-${{ matrix.arch }}.json
+          shasum -a 256 mac/Shixu-Desktop-1.0.2-mac-${{ matrix.arch }}.dmg mac/Shixu-Desktop-1.0.2-mac-${{ matrix.arch }}.zip | sed 's|mac/||' > mac/SHA256SUMS-mac-${{ matrix.arch }}.txt
+      - name: Attach verified macOS assets to draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v1.0.2 --json isDraft,targetCommitish > existing-release.json
+          node -e "const r=require('./existing-release.json');if(!r.isDraft||r.targetCommitish!==process.env.GITHUB_SHA)throw Error('Draft release does not match build commit')"
+          gh release upload v1.0.2 mac/*-mac-${{ matrix.arch }}.* --clobber
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-${{ matrix.arch }}-validation
+          path: |
+            mac/*.json
+            mac/*.txt
+            mac/builder-debug.yml

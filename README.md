@@ -11,15 +11,15 @@ Shixu Desktop helps molecular biology, plant science and bioinformatics research
 
 Research records stay on the computer. Shixu links project plans, experiment results, analysis steps and files without requiring a cloud account or moving original data.
 
-## Download v1.0.1
+## Download v1.0.2
 
 | Platform | Installer |
 | --- | --- |
-| Windows 10/11, x64 | [Download Windows installer](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.1/Shixu-Desktop-1.0.1-win-x64.exe) |
-| macOS, Apple Silicon (M series) | [Download Apple Silicon DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.1/Shixu-Desktop-1.0.1-mac-arm64.dmg) |
-| macOS, Intel | [Download Intel DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.1/Shixu-Desktop-1.0.1-mac-x64.dmg) |
+| Windows 10/11, x64 | [Download Windows installer](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.2/Shixu-Desktop-1.0.2-win-x64.exe) |
+| macOS, Apple Silicon (M series) | [Download Apple Silicon DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.2/Shixu-Desktop-1.0.2-mac-arm64.dmg) |
+| macOS, Intel | [Download Intel DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.2/Shixu-Desktop-1.0.2-mac-x64.dmg) |
 
-The [release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.1) also includes macOS ZIP archives, SHA-256 checksums and validation reports.
+The [release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.2) also includes macOS ZIP archives, SHA-256 checksums and validation reports.
 
 **Signing status:** The Windows installer does not have a publisher certificate. The macOS apps use ad-hoc signatures; they are not Developer ID signed or notarized. Your operating system may display a publisher or security approval notice. Follow the system’s normal prompts; do not disable security protections.
 
@@ -37,7 +37,7 @@ In **Lab bench → Record results**, connect an experiment to a research project
 - Record experiments with preparation checklists, ordered hands-on/waiting steps, sample references and reagent lots.
 - Run persistent timers, see due or overdue steps, and review work after resuming the app.
 - Use dilution and master-mix calculators with values you enter yourself.
-- Open the floating panel in always-visible or edge-docked mode; quick actions remain available alongside other desktop work.
+- Open the floating panel in always-visible or edge-docked mode; scroll through all unfinished tasks in its compact view without expanding it.
 
 A timer marks a planned handoff time. It does not certify that a step succeeded or passed QC. Notifications require the application to be running, and sleep may delay them.
 
@@ -50,6 +50,8 @@ These scaffolds are for planning and documenting work. They do not install or ru
 ### Manage projects and desktop access
 
 Projects, examples, and archived projects can be deleted with confirmation. Associated tasks and experiments are kept by default; optional cascade deletion preserves experiments shared by other projects. A backup is required before deletion, and linked files remain on disk. The floating ball stays visible when the main window is minimized. Launching the app again activates the existing application instance.
+
+To upgrade from v1.0.1, quit Shixu (including the tray/background instance) and install the new version in the same location, or replace the existing macOS app. The application identity and local data directory are unchanged. Export a JSON backup before updating; linked research files stay in their original locations.
 
 ## English-first onboarding
 
@@ -107,7 +109,7 @@ For compatibility, this release retains the existing `Shixu Desktop 2 Beta` data
 
 ## Validation and scope
 
-The v1.0.1 verification set includes source checks, 90 automated tests, packaged-source verification and startup checks on Windows x64, macOS Intel and Apple Silicon using isolated empty workspaces. Nine project-deletion UI checks were also performed in Electron on Windows. See [release validation](docs/VALIDATION.md) and the platform JSON reports attached to the [release](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.1). Download `SHA256SUMS.txt` to verify the installer files.
+The v1.0.2 verification set includes source checks, 91 automated tests, packaged-source verification, isolated startup checks on Windows x64 and both macOS architectures, and a Windows installation-over-v1.0.1 check with synthetic records. The compact panel was also checked with 32 unfinished tasks in both languages and display modes. See [release validation](docs/VALIDATION.md) and the platform JSON reports attached to the [release](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.2). Download `SHA256SUMS.txt` to verify the installer files.
 
 These checks cover automated behavior, packaged source and first-run startup; full manual install/uninstall acceptance, visual layout and native notifications require testing on the target device. Shixu complements laboratory SOPs, ELN/LIMS systems and workflow engines; it does not provide a regulated immutable audit trail or automatically execute bioinformatics pipelines.
 

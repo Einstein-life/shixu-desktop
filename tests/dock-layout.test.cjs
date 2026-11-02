@@ -97,3 +97,15 @@ test('renderer ignores a stale ball paint when expansion occurs during pending e
   assert.equal(r.node('shell').classList.contains('ball-only'),false);
   assert.equal(r.node('expanded').classList.contains('open'),true);
 });
+
+
+test('compact panel retains all unfinished tasks, including ready and waiting items',async()=>{
+  const tasks=[...Array.from({length:20},(_,i)=>({id:'open-'+i,title:'Open '+i,score:20-i,createdAt:i+1})),...Array.from({length:4},(_,i)=>({id:'ready-'+i,title:'Ready '+i,run_state:'ready',score:12-i})),...Array.from({length:4},(_,i)=>({id:'waiting-'+i,title:'Waiting '+i,run_state:'waiting',score:10-i})),{id:'escaped',title:'<script>Task & title</script>',score:1},{id:'done',title:'Finished task',score:22,done:true}];
+  const r=await renderer(desktop(),{load:async()=>({tasks,projects:[],experiments:[]})});
+  const html=r.node('peekBody').innerHTML;
+  assert.equal((html.match(/data-user-copy/g)||[]).length,29);
+  for(const task of tasks.filter(t=>!t.done&&t.id!=='escaped'))assert.ok(html.includes('>'+task.title+'</span>'),task.id);
+  assert.ok(!html.includes('Finished task'));
+  assert.ok(html.includes('&lt;script&gt;Task &amp; title&lt;/script&gt;'));
+  assert.equal(r.node('expanded').classList.contains('open'),false);
+});
