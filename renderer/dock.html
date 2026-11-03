@@ -143,8 +143,11 @@
       border:1px solid #8B3A18;
       position:relative;
       overflow:hidden;
-      cursor:pointer;
+      cursor:grab;
+      touch-action:none;
+      -webkit-app-region:no-drag;
     }
+    .bb.dragging { cursor:grabbing; }
     .bb::before,
     .bb::after {
       content:"";
@@ -476,14 +479,78 @@
 
     $("btnMode") && $("btnMode").addEventListener("click", toggleMode);
     $("btnMode2") && $("btnMode2").addEventListener("click", toggleMode);
-    $("bb") && $("bb").addEventListener("click", () => { void setExpanded(true); });
+    let ballPointer = null;
+
+    function queueBallDragMove(drag) {
+      drag.moveRequested = true;
+      if (drag.movePending) return;
+      drag.movePending = true;
+      drag.movePromise = (async () => {
+        while (drag.moveRequested) {
+          drag.moveRequested = false;
+          await drag.started;
+          if (window.shixu?.dockDragMove) await window.shixu.dockDragMove();
+        }
+      })().finally(() => { drag.movePending = false; });
+    }
+
+    $("bb") && $("bb").addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || ballPointer) return;
+      if (hoverRevealTimer !== null) {
+        clearTimeout(hoverRevealTimer);
+        hoverRevealTimer = null;
+      }
+      e.preventDefault();
+      const ball = $("bb");
+      ballPointer = {
+        id:e.pointerId, x:e.clientX, y:e.clientY, moved:false,
+        moveRequested:false, movePending:false, movePromise:Promise.resolve(),
+        started:window.shixu?.dockDragStart ? window.shixu.dockDragStart() : Promise.resolve(false)
+      };
+      ball.setPointerCapture?.(e.pointerId);
+    });
+
+    $("bb") && $("bb").addEventListener("pointermove", (e) => {
+      const drag = ballPointer;
+      if (!drag || drag.id !== e.pointerId) return;
+      if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
+      drag.moved = true;
+      $("bb").classList.add("dragging");
+      queueBallDragMove(drag);
+    });
+
+    async function finishBallPointer(e, cancelled = false) {
+      const drag = ballPointer;
+      if (!drag || drag.id !== e.pointerId) return;
+      ballPointer = null;
+      $("bb").classList.remove("dragging");
+      try { $("bb").releasePointerCapture?.(e.pointerId); } catch (_) {}
+      try {
+        await drag.started;
+        while (drag.movePending || drag.moveRequested) {
+          if (!drag.movePending) queueBallDragMove(drag);
+          await drag.movePromise;
+        }
+        if (window.shixu?.dockDragEnd) await window.shixu.dockDragEnd();
+      } catch (_) {}
+      if (!drag.moved && !cancelled) await setExpanded(true);
+    }
+
+    $("bb") && $("bb").addEventListener("pointerup", (e) => { void finishBallPointer(e); });
+    $("bb") && $("bb").addEventListener("pointercancel", (e) => { void finishBallPointer(e, true); });
 
     let hoverCount = 0;
     let lastHoverTs = Date.now();
+    let hoverRevealTimer = null;
     document.getElementById("shell").addEventListener("mouseenter", () => {
       hoverCount += 1;
       lastHoverTs = Date.now();
-      if (displayMode === "edge" && edgeHidden) void showFromEdge(false);
+      if (displayMode === "edge" && edgeHidden && hoverRevealTimer === null) {
+        hoverRevealTimer = setTimeout(() => {
+          hoverRevealTimer = null;
+          if (displayMode === "edge" && edgeHidden && !ballPointer) void showFromEdge(false);
+        }, 180);
+      }
     });
     document.getElementById("shell").addEventListener("mouseleave", () => {
       hoverCount = Math.max(0, hoverCount - 1);
@@ -493,14 +560,16 @@
       if (displayMode !== "edge") return;
       const over = hoverCount > 0;
       if (over) {
-        if (edgeHidden) showFromEdge(true);
+        if (edgeHidden && !ballPointer) showFromEdge(true);
         lastHoverTs = Date.now();
-      } else if (!expanded && Date.now() - lastHoverTs > 900) {
+      } else if (!expanded && !ballPointer?.moved && Date.now() - lastHoverTs > 900) {
         hideToEdge();
       }
     }, 250);
 
     async function init() {
+      const ball = $("ballWrap");
+      if (ball) ball.title = L("按住拖动可移动位置，单击展开","Drag to move; click to expand");
       if (window.shixu) {
         state = normalize(await window.shixu.load());
         window.shixu.onUpdate((data) => {

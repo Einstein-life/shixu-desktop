@@ -22,6 +22,7 @@ const liveNotifications = new Set();
 let mainWindow = null;
 let dockWindow = null;
 let dockExpanded = false;
+let dockBallDrag = null;
 let startupComplete = false;
 let mainActivationPending = false;
 let tray = null;
@@ -224,6 +225,7 @@ function createDockWindow() {
       sandbox: false
     }
   });
+  if (validDockBallPosition(loadSettings().dockBallPosition)) placePanel(w, h, false);
   dockWindow.setAlwaysOnTop(true, 'screen-saver');
   dockWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   dockWindow.loadFile(pagePath('dock'));
@@ -235,6 +237,7 @@ function createDockWindow() {
   }, 2000);
   dockWindow.on('closed', () => {
     if (dockWindow && dockWindow._topmostTimer) clearInterval(dockWindow._topmostTimer);
+    dockBallDrag = null;
     dockWindow = null;
   });
 }
@@ -474,9 +477,13 @@ function clampToWorkArea(width, height, x, y, display) {
   };
 }
 
-function applyDockBounds(width, height, x, y, preferCursor) {
+function applyDockBounds(width, height, x, y, preferCursor, anchorPoint = null) {
   if (!dockWindow || dockWindow.isDestroyed()) return null;
-  const display = layoutDisplay(!!preferCursor);
+  let display = null;
+  if (anchorPoint) {
+    try { display = screen.getDisplayNearestPoint(anchorPoint); } catch (_) {}
+  }
+  if (!display) display = layoutDisplay(!!preferCursor);
   const bounds = clampToWorkArea(width, height, x, y, display);
   dockWindow.setBounds(bounds);
   // 二次校正：防止 DPI/跨屏导致 setBounds 后仍越界
@@ -492,6 +499,11 @@ function applyDockBounds(width, height, x, y, preferCursor) {
 
 /** 面板（非球）固定靠当前屏右侧、完整可见 */
 function placePanel(width, height, preferCursor) {
+  const pinned = getDockBallPosition();
+  if (pinned) {
+    const anchorPoint = { x: pinned.x + 28, y: pinned.y + 28 };
+    return applyDockBounds(width, height, pinned.x + 56 - width, pinned.y, preferCursor, anchorPoint);
+  }
   const display = layoutDisplay(!!preferCursor);
   const wa = display.workArea;
   const y = dockCurrentY(height, preferCursor);
@@ -500,10 +512,24 @@ function placePanel(width, height, preferCursor) {
 }
 
 function placeBall(preferCursor) {
+  const pinned = getDockBallPosition();
+  if (pinned) {
+    const anchorPoint = { x: pinned.x + 28, y: pinned.y + 28 };
+    return applyDockBounds(56, 56, pinned.x, pinned.y, preferCursor, anchorPoint);
+  }
   const display = layoutDisplay(!!preferCursor);
   const wa = display.workArea;
   const size = 56;
   return applyDockBounds(size, size, wa.x + wa.width - size - 4, dockCurrentY(size, preferCursor), preferCursor);
+}
+
+function validDockBallPosition(value) {
+  return value && Number.isFinite(value.x) && Number.isFinite(value.y);
+}
+
+function getDockBallPosition() {
+  const position = loadSettings().dockBallPosition;
+  return validDockBallPosition(position) ? { x: Math.round(position.x), y: Math.round(position.y) } : null;
 }
 
 function dockCurrentY(height, preferCursor) {
@@ -552,6 +578,40 @@ ipcMain.handle('shixu:dock-slide', (_e, payload) => {
     placePanel(dockExpanded ? 420 : 340, dockExpanded ? 660 : 200, true);
   }
   return true;
+});
+
+function isDockWindowSender(event) {
+  return !!dockWindow && !dockWindow.isDestroyed() && event.sender === dockWindow.webContents;
+}
+
+ipcMain.handle('shixu:dock-drag-start', (event) => {
+  if (!isDockWindowSender(event) || dockExpanded) return false;
+  const bounds = dockWindow.getBounds();
+  const cursor = screen.getCursorScreenPoint();
+  dockBallDrag = {
+    sender: event.sender,
+    offsetX: cursor.x - bounds.x,
+    offsetY: cursor.y - bounds.y,
+    bounds
+  };
+  return true;
+});
+
+ipcMain.handle('shixu:dock-drag-move', (event) => {
+  if (!isDockWindowSender(event) || !dockBallDrag || dockBallDrag.sender !== event.sender || dockExpanded) return false;
+  const cursor = screen.getCursorScreenPoint();
+  const bounds = applyDockBounds(56, 56, cursor.x - dockBallDrag.offsetX, cursor.y - dockBallDrag.offsetY, true);
+  if (!bounds) return false;
+  dockBallDrag.bounds = bounds;
+  return bounds;
+});
+
+ipcMain.handle('shixu:dock-drag-end', (event) => {
+  if (!isDockWindowSender(event) || !dockBallDrag || dockBallDrag.sender !== event.sender) return false;
+  const bounds = dockWindow.getBounds();
+  dockBallDrag = null;
+  saveSettings({ dockBallPosition: { x: bounds.x, y: bounds.y } });
+  return { x: bounds.x, y: bounds.y };
 });
 
 ipcMain.handle('shixu:open-main', () => {
