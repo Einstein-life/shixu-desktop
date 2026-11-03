@@ -33,7 +33,9 @@ async function main(){
   data.projects[0].artifacts[0].path=linkedFile;data.projects[0].artifacts[0].type='file';
   fs.writeFileSync(file,JSON.stringify(data,null,2));
   fs.writeFileSync(path.join(profile,'expected-records.json'),JSON.stringify(capture(data),null,2));
-  fs.writeFileSync(path.join(profile,'shixu-settings.json'),JSON.stringify({locale:'en',dockVisible:false,autoStart:false}));
+  const settings={locale:'en',dockVisible:false,autoStart:false,dockDisplayMode:'edge',dockBallPosition:{x:347,y:263}};
+  fs.writeFileSync(path.join(profile,'shixu-settings.json'),JSON.stringify(settings));
+  fs.writeFileSync(path.join(profile,'expected-settings.json'),JSON.stringify(settings));
   console.log('Prepared isolated synthetic upgrade profile');return;
  }
  if(mode!=='check')throw Error('Use prepare PROFILE or check EXECUTABLE PROFILE REPORT');
@@ -49,9 +51,12 @@ async function main(){
   if(spawnError)throw spawnError;if(exited)throw Error('Application exited: '+exitCode+' '+output.slice(-1500));
   const expected=JSON.parse(fs.readFileSync(path.join(profile,'expected-records.json'),'utf8'));
   const actual=JSON.parse(fs.readFileSync(file,'utf8'));assert.deepEqual(capture(actual),expected);
+  const expectedSettings=JSON.parse(fs.readFileSync(path.join(profile,'expected-settings.json'),'utf8'));
+  const actualSettings=JSON.parse(fs.readFileSync(path.join(profile,'shixu-settings.json'),'utf8'));
+  assert.deepEqual(canonical(actualSettings),canonical(expectedSettings));
   assert.equal(fs.readFileSync(path.join(profile,'linked-evidence.txt'),'utf8'),'Synthetic evidence file retained across upgrade.');
   fs.mkdirSync(path.dirname(report),{recursive:true});
-  fs.writeFileSync(report,JSON.stringify({started:true,recordsRetained:true,externalFileRetained:true,syntheticData:true,projects:actual.projects.length,tasks:actual.tasks.length,experiments:actual.experiments.length,checkedAt:new Date().toISOString(),limits:'Tests process survival and selected records using an isolated profile; no real user profile is touched.'},null,2)+String.fromCharCode(10));
+  fs.writeFileSync(report,JSON.stringify({started:true,recordsRetained:true,settingsRetained:true,dockBallPositionRetained:actualSettings.dockBallPosition.x===347&&actualSettings.dockBallPosition.y===263,externalFileRetained:true,syntheticData:true,projects:actual.projects.length,tasks:actual.tasks.length,experiments:actual.experiments.length,checkedAt:new Date().toISOString(),limits:'Tests process survival and selected records using an isolated profile; no real user profile is touched.'},null,2)+String.fromCharCode(10));
   console.log('Application started and synthetic records retained');
  }finally{child.kill();await new Promise(resolve=>{if(exited)return resolve();child.once('exit',resolve);setTimeout(resolve,3000);});}
 }
