@@ -64,7 +64,7 @@ test('a failed geometry operation does not block later recovery and rapid collap
 });
 
 async function renderer(d,overrides={}){
-  const nodes=new Map(),timers=[];
+  const nodes=new Map(),timers=[],intervals=[];
   const node=id=>{
     if(!nodes.has(id)){
       const classes=new Set();
@@ -73,11 +73,93 @@ async function renderer(d,overrides={}){
     return nodes.get(id);
   };
   const api={...d.api,load:async()=>({tasks:[],projects:[],experiments:[]}),onUpdate:()=>{},dockGetDisplayMode:async()=>({displayMode:'edge'}),dockDisplayMode:async()=>{},...overrides};
-  const context=vm.createContext({window:{shixu:api,DockLayout:{createDockLayoutController}},document:{documentElement:{lang:'en'},getElementById:node,querySelectorAll:()=>[]},LabCore:require('../renderer/lab-core.js'),URLSearchParams,location:{search:''},setInterval:()=>{},setTimeout:(fn,delay)=>{timers.push({fn,delay,cleared:false});return timers.length-1;},clearTimeout:id=>{if(timers[id])timers[id].cleared=true;},console});
+  const context=vm.createContext({window:{shixu:api,DockLayout:{createDockLayoutController}},document:{documentElement:{lang:'en'},getElementById:node,querySelectorAll:()=>[]},LabCore:require('../renderer/lab-core.js'),URLSearchParams,location:{search:''},setInterval:(fn,delay)=>{intervals.push({fn,delay});return intervals.length-1;},setTimeout:(fn,delay)=>{timers.push({fn,delay,cleared:false});return timers.length-1;},clearTimeout:id=>{if(timers[id])timers[id].cleared=true;},console});
   const source=fs.readFileSync(path.join(__dirname,'../renderer/dock.html'),'utf8').match(/  <script>\s*([\s\S]*?)<\/script>/)[1];
   vm.runInContext(source,context);await context.init();
-  return {context,node,timers,run:code=>vm.runInContext(code,context)};
+  return {context,node,timers,intervals,run:code=>vm.runInContext(code,context)};
 }
+
+test('edge mode returns an expanded panel to the ball after repeated expansions and pointer exit',async()=>{
+  const d=desktop(),r=await renderer(d);
+  await r.context.setDisplayMode('always');
+  for(let i=0;i<6;i++){await r.context.setExpanded(true);await r.context.setExpanded(false);}
+  await r.context.setExpanded(true);
+  await r.context.setDisplayMode('edge');
+  r.node('shell').listeners.mouseleave();
+  r.run('lastHoverTs=Date.now()-1200');
+  r.intervals.find(t=>t.delay===250).fn();
+  for(let i=0;i<8;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(r.node('shell').classList.contains('ball-only'),true);
+  assert.equal(r.run('expanded'),false);
+  assert.equal(r.run('edgeHidden'),true);
+  assert.equal(d.bounds().width,56);
+  assert.equal(d.bounds().height,56);
+});
+
+test('a single pointer exit clears repeated hover entries and allows the panel to return to its saved ball position',async()=>{
+  const d=desktop(undefined,{dockBallPosition:{x:480,y:280}}),r=await renderer(d);
+  await r.context.setDisplayMode('edge');
+  await r.context.setExpanded(false);
+  for(let i=0;i<3;i++)r.node('shell').listeners.mouseenter();
+  r.node('shell').listeners.mouseleave();
+  r.run('lastHoverTs=Date.now()-1200');
+  r.intervals.find(t=>t.delay===250).fn();
+  for(let i=0;i<8;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(r.node('shell').classList.contains('ball-only'),true);
+  assert.deepEqual(d.bounds(),{x:480,y:280,width:56,height:56});
+});
+
+test('edge mode keeps an expanded panel open while the pointer remains over it',async()=>{
+  const d=desktop(),r=await renderer(d);
+  await r.context.setExpanded(true);
+  r.node('shell').listeners.mouseenter();
+  await r.context.setDisplayMode('edge');
+  r.timers.find(t=>t.delay===500).fn();
+  r.intervals.find(t=>t.delay===250).fn();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(r.run('expanded'),true);
+  assert.equal(r.run('edgeHidden'),false);
+  assert.equal(d.bounds().height,660);
+});
+
+test('reopening during a pending expanded-to-ball transition leaves the final native window expanded',async()=>{
+  const d=desktop(),gate=deferred();let hold=false;
+  const r=await renderer(d,{dockSetSize:async value=>{if(hold&&!value)await gate.promise;return d.api.dockSetSize(value);}});
+  await r.context.setExpanded(true);
+  hold=true;
+  const hiding=r.context.hideToEdge();
+  await new Promise(resolve=>setImmediate(resolve));
+  const opening=r.context.setExpanded(true);
+  gate.resolve();await Promise.all([hiding,opening]);
+  assert.equal(d.bounds().height,660);
+  assert.equal(r.node('shell').classList.contains('ball-only'),false);
+  assert.equal(r.run('edgeHidden'),false);
+  assert.equal(r.run('expanded'),true);
+});
+
+test('a late edge-mode response cannot undo a later always-visible selection',async()=>{
+  const gate=deferred(),d=desktop(),r=await renderer(d,{dockDisplayMode:async mode=>{if(mode==='edge')await gate.promise;}});
+  const edge=r.context.setDisplayMode('edge');
+  await r.context.setDisplayMode('always');
+  gate.resolve();await edge;
+  for(const timer of r.timers.filter(t=>!t.cleared))timer.fn();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(r.run('displayMode'),'always');
+  assert.equal(r.run('edgeHidden'),false);
+  assert.equal(r.node('shell').classList.contains('ball-only'),false);
+});
+
+test('a failed edge collapse can retry instead of remaining falsely marked as hidden',async()=>{
+  const d=desktop();let fail=false;
+  const r=await renderer(d,{dockSetSize:value=>{if(fail&&!value){fail=false;throw Error('Window busy');}return d.api.dockSetSize(value);}});
+  await r.context.setExpanded(true);fail=true;
+  await r.context.hideToEdge();
+  assert.equal(r.run('edgeHidden'),false);
+  assert.equal(r.node('shell').classList.contains('ball-only'),false);
+  await r.context.hideToEdge();
+  assert.equal(d.bounds().height,56);
+  assert.equal(r.node('shell').classList.contains('ball-only'),true);
+});
 
 test('renderer hover and mode switching retain full native bounds until explicit collapse',async()=>{
   const d=desktop(),r=await renderer(d);

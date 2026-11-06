@@ -30,6 +30,7 @@
       hide(){
         return enqueue(async()=>{
           const api=getApi();
+          if(api.dockSetSize)await api.dockSetSize(false);
           if(api.dockSlide)await api.dockSlide({mode:'hide-edge'});
           if(api.dockSetBall)await api.dockSetBall(true);
         });

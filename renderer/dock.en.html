@@ -31,7 +31,7 @@
       display:flex; flex-direction:column;
       overflow:hidden;
     }
-    #shell.has-now { background:#2A0F0C; border-color:#5A2018; }
+    #shell.has-now, #shell.expanded { background:#2A0F0C; border-color:#5A2018; }
     .drag { -webkit-app-region: drag; }
     .nodrag { -webkit-app-region: no-drag; }
     .top {
@@ -86,8 +86,8 @@
     .cards { flex:1; min-height:0; overflow:auto; padding:0 8px 8px; }
     .top,.slots,.rec,.foot,.lab-dock-alert { flex-shrink:0; }
     .card {
-      background:#121A26; border:1px solid #243041; border-left:4px solid var(--muted);
-      color:#F4F7FA;
+      background:#FFF1EF; border:1px solid #243041; border-left:4px solid var(--now);
+      color:#9F1239;
       border-radius:8px; padding:8px 10px; margin-bottom:6px;
     }
     .card.now { border-left-color:var(--now); background:#FFF1EF; color:#9F1239; }
@@ -418,6 +418,12 @@
 
     const dockLayout = window.DockLayout?.createDockLayoutController(() => window.shixu || {});
 
+    function paintDockExpansion() {
+      $("shell").classList.toggle("expanded", expanded);
+      $("collapsed").classList.toggle("open", !expanded);
+      $("expanded").classList.toggle("open", expanded);
+    }
+
     async function setExpanded(v) {
       expanded = !!v;
       if (expanded) {
@@ -425,13 +431,13 @@
         document.getElementById("shell").classList.remove("ball-only");
       }
       const targetExpanded = expanded;
-      $("collapsed").classList.toggle("open", !expanded);
-      $("expanded").classList.toggle("open", expanded);
+      paintDockExpansion();
       if (dockLayout) await dockLayout.resize(targetExpanded);
       else if (window.shixu && window.shixu.dockSetSize) await window.shixu.dockSetSize(targetExpanded);
     }
 
     let displayMode = "always";
+    let displayModeRevision = 0;
     let edgeHidden = false;
     let homePos = null;
 
@@ -446,23 +452,39 @@
     }
 
     async function setDisplayMode(mode) {
+      const revision = ++displayModeRevision;
       displayMode = mode === "edge" ? "edge" : "always";
+      cancelHoverReveal();
       paintMode();
       if (window.shixu && window.shixu.dockDisplayMode) {
         await window.shixu.dockDisplayMode(displayMode);
       }
+      if (revision !== displayModeRevision) return;
       if (displayMode === "always") {
         await showFromEdge(true);
       } else {
-        setTimeout(hideToEdge, 500);
+        setTimeout(() => {
+          if (revision === displayModeRevision && !pointerOverDock() && !ballPointer) void hideToEdge();
+        }, 500);
       }
     }
 
     async function hideToEdge() {
-      if (displayMode !== "edge" || expanded || edgeHidden) return;
+      if (displayMode !== "edge" || edgeHidden || ballPointer) return;
+      cancelHoverReveal();
+      expanded = false;
+      paintDockExpansion();
       edgeHidden = true;
-      if (dockLayout) await dockLayout.hide();
-      else if (window.shixu && window.shixu.dockSetBall) await window.shixu.dockSetBall(true);
+      try {
+        if (dockLayout) await dockLayout.hide();
+        else if (window.shixu) {
+          if (window.shixu.dockSetSize) await window.shixu.dockSetSize(false);
+          if (window.shixu.dockSetBall) await window.shixu.dockSetBall(true);
+        }
+      } catch (_) {
+        if (!expanded && displayMode === "edge") edgeHidden = false;
+        return;
+      }
       if (!expanded && displayMode === "edge" && edgeHidden) document.getElementById("shell").classList.add("ball-only");
     }
 
@@ -498,10 +520,7 @@
 
     $("bb") && $("bb").addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || ballPointer) return;
-      if (hoverRevealTimer !== null) {
-        clearTimeout(hoverRevealTimer);
-        hoverRevealTimer = null;
-      }
+      cancelHoverReveal();
       e.preventDefault();
       const ball = $("bb");
       ballPointer = {
@@ -541,31 +560,49 @@
     $("bb") && $("bb").addEventListener("pointerup", (e) => { void finishBallPointer(e); });
     $("bb") && $("bb").addEventListener("pointercancel", (e) => { void finishBallPointer(e, true); });
 
-    let hoverCount = 0;
+    let pointerInside = false;
     let lastHoverTs = Date.now();
     let hoverRevealTimer = null;
+
+    function pointerOverDock() {
+      const shell = $("shell");
+      return typeof shell.matches === "function" ? shell.matches(":hover") : pointerInside;
+    }
+
+    function cancelHoverReveal() {
+      if (hoverRevealTimer === null) return;
+      clearTimeout(hoverRevealTimer);
+      hoverRevealTimer = null;
+    }
+
+    function scheduleHoverReveal() {
+      if (displayMode !== "edge" || !edgeHidden || hoverRevealTimer !== null || ballPointer) return;
+      hoverRevealTimer = setTimeout(() => {
+        hoverRevealTimer = null;
+        if (displayMode === "edge" && edgeHidden && pointerOverDock() && !ballPointer) void showFromEdge(false);
+      }, 180);
+    }
+
     document.getElementById("shell").addEventListener("mouseenter", () => {
-      hoverCount += 1;
+      pointerInside = true;
       lastHoverTs = Date.now();
-      if (displayMode === "edge" && edgeHidden && hoverRevealTimer === null) {
-        hoverRevealTimer = setTimeout(() => {
-          hoverRevealTimer = null;
-          if (displayMode === "edge" && edgeHidden && !ballPointer) void showFromEdge(false);
-        }, 180);
-      }
+      scheduleHoverReveal();
     });
     document.getElementById("shell").addEventListener("mouseleave", () => {
-      hoverCount = Math.max(0, hoverCount - 1);
+      pointerInside = false;
+      lastHoverTs = Date.now();
+      cancelHoverReveal();
     });
 
     setInterval(() => {
-      if (displayMode !== "edge") return;
-      const over = hoverCount > 0;
+      if (displayMode !== "edge" || ballPointer) return;
+      const over = pointerOverDock();
       if (over) {
-        if (edgeHidden && !ballPointer) showFromEdge(true);
+        scheduleHoverReveal();
         lastHoverTs = Date.now();
-      } else if (!expanded && !ballPointer?.moved && Date.now() - lastHoverTs > 900) {
-        hideToEdge();
+      } else {
+        cancelHoverReveal();
+        if (Date.now() - lastHoverTs > 900) void hideToEdge();
       }
     }, 250);
 
