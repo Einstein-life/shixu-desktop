@@ -8,7 +8,14 @@ function system({packaged=false,platform='win32',ignore=false,writeError=false,r
   let registered=false;
   const reads=[],writes=[],saved=[];
   const app={isPackaged:packaged,getAppPath:()=>path.resolve(__dirname,'..'),
-    getLoginItemSettings:identity=>{reads.push(identity);if(readError)throw new Error('denied');return {openAtLogin:registered,...extra};},
+    getLoginItemSettings:identity=>{
+      reads.push(identity);if(readError)throw new Error('denied');
+      const write=writes.at(-1);
+      const unquote=value=>String(value).replace(/^"(.*)"$/,'$1');
+      // Electron 33 reads openAtLogin using AppUserModelID, even when set() used a custom name.
+      const launchItems=platform==='win32'&&registered?[{name:'Shixu Desktop',path:unquote(write.path),args:write.args.map(unquote),scope:'user',enabled:true}]:[];
+      return {openAtLogin:platform==='win32'?false:registered,launchItems,...extra};
+    },
     setLoginItemSettings:value=>{writes.push(value);if(writeError)throw new Error('denied');if(!ignore)registered=value.openAtLogin;}};
   return {controller:createAutoStart({app,platform,execPath:'C:\\Shixu folder\\electron.exe',saveSettings:patch=>saved.push(patch)}),reads,writes,saved};
 }
@@ -19,8 +26,8 @@ test('Windows development login settings read and write the same executable and 
   assert.equal(s.controller.set(true).openAtLogin,true);
   assert.equal(s.controller.get().openAtLogin,true);
   const {path:exe,args}=s.writes[0];
-  assert.equal(exe,'C:\\Shixu folder\\electron.exe');
-  assert.deepEqual(args,[path.resolve(__dirname,'..')]);
+  assert.equal(exe,'"C:\\Shixu folder\\electron.exe"');
+  assert.deepEqual(args,['"'+path.resolve(__dirname,'..')+'"']);
   for(const query of s.reads)assert.deepEqual(query,{path:exe,args});
   assert.equal(s.controller.set(false).openAtLogin,false);
   assert.deepEqual(s.saved,[{openAtLogin:true},{openAtLogin:false}]);
@@ -31,6 +38,41 @@ test('packaged Windows app registers its own executable without development argu
   s.controller.set(true);
   assert.deepEqual(s.writes[0].args,[]);
   assert.equal(s.writes[0].enabled,true);
+  assert.equal(s.writes[0].path,'"C:\\Shixu folder\\electron.exe"');
+});
+
+test('Windows custom startup registration is verified from its exact launch item when the default flag stays false',()=>{
+  const s=system({packaged:true});
+  const value=s.controller.set(true);
+  assert.equal(value.registered,true);
+  assert.equal(value.openAtLogin,true);
+  assert.equal(value.blocked,false);
+  assert.deepEqual(s.saved,[{openAtLogin:true}]);
+});
+
+test('a same-name entry for another path, arguments or machine scope never enables this user startup preference',()=>{
+  const ownPath='C:\\Shixu folder\\electron.exe';
+  for(const entry of [
+    {name:'Other application',path:ownPath,args:[],scope:'user',enabled:true},
+    {name:'Shixu Desktop',path:'C:\\Other folder\\Shixu.exe',args:[],scope:'user',enabled:true},
+    {name:'Shixu Desktop',path:ownPath,args:['another-project'],scope:'user',enabled:true},
+    {name:'Shixu Desktop',path:ownPath,args:[],scope:'machine',enabled:true},
+    {name:'Shixu Desktop',path:'C:\\Shixu',args:['folder\\electron.exe'],scope:'user',enabled:true}
+  ]){
+    const s=system({packaged:true,extra:{openAtLogin:true,executableWillLaunchAtLogin:true,launchItems:[entry]}});
+    assert.equal(s.controller.get().openAtLogin,false);
+    assert.equal(s.controller.get().registered,false);
+  }
+});
+
+test('Windows path matching tolerates drive-letter case and path separator differences',()=>{
+  const s=system({packaged:true,extra:{launchItems:[{name:'Shixu Desktop',path:'c:/SHIXU FOLDER/electron.exe',args:[],scope:'user',enabled:true}]}});
+  assert.equal(s.controller.get().openAtLogin,true);
+});
+
+test('disabled approval is reported even though the default openAtLogin flag is false',()=>{
+  const s=system({packaged:true,extra:{openAtLogin:false,launchItems:[{name:'Shixu Desktop',path:'C:\\Shixu folder\\electron.exe',args:[],scope:'user',enabled:false}]}});
+  assert.deepEqual(s.controller.get(),{available:true,openAtLogin:false,registered:true,blocked:true,pendingApproval:false});
 });
 
 test('failed writes and writes rejected by the OS never save a successful preference',()=>{

@@ -1,20 +1,28 @@
 const path=require('node:path');
 
-function createAutoStart({app,platform=process.platform,execPath=process.execPath,saveSettings}) {
+function createAutoStart({app,platform=process.platform,execPath=process.execPath,saveSettings,entryName='Shixu Desktop'}) {
   const available=platform==='win32'||(platform==='darwin'&&app.isPackaged);
   const reason=platform==='darwin'?'INSTALL_REQUIRED':'UNSUPPORTED';
   // Development Electron must receive the project path, or it opens Electron's welcome screen.
-  // Reading with identical arguments is required for Windows openAtLogin to be accurate.
-  const identity=platform==='win32'?{path:execPath,args:app.isPackaged?[]:[path.resolve(app.getAppPath())]}:{};
+  // Electron 33 joins this command line without quoting paths for us.
+  const launchArgs=platform==='win32'&&!app.isPackaged?[path.resolve(app.getAppPath())]:[];
+  const quote=value=>'"'+value+'"';
+  const identity=platform==='win32'?{path:quote(execPath),args:launchArgs.map(quote)}:{};
+  const normalize=value=>path.win32.normalize(String(value).replace(/^"(.*)"$/,'$1')).toLowerCase();
   function get() {
     if(!available)return {available:false,openAtLogin:false,reason};
     let info;
     try {info=app.getLoginItemSettings(identity);}catch(cause){throw new Error('AUTOSTART_READ_FAILED',{cause});}
-    const registered=!!info.openAtLogin;
+    let registered=!!info.openAtLogin;
     let blocked=false;
-    if(platform==='win32'&&registered&&Array.isArray(info.launchItems)) {
-      const normalize=value=>path.win32.normalize(String(value)).toLowerCase();
-      const match=info.launchItems.filter(item=>item.name==='Shixu Desktop'&&normalize(item.path)===normalize(identity.path)&&JSON.stringify(item.args||[])===JSON.stringify(identity.args));
+    if(platform==='win32') {
+      // openAtLogin checks AppUserModelID, not the custom registry name used by set().
+      // Match our per-user record and its parsed executable/arguments instead.
+      const items=Array.isArray(info.launchItems)?info.launchItems:[];
+      const match=items.filter(item=>item.name===entryName&&(item.scope==='user'||item.scope==null)&&
+        normalize(item.path)===normalize(execPath)&&Array.isArray(item.args)&&
+        item.args.length===launchArgs.length&&item.args.every((arg,i)=>normalize(arg)===normalize(launchArgs[i])));
+      registered=match.length>0;
       blocked=match.length>0&&match.every(item=>!item.enabled);
     }
     const pendingApproval=platform==='darwin'&&info.status==='requires-approval';
@@ -23,7 +31,7 @@ function createAutoStart({app,platform=process.platform,execPath=process.execPat
   function set(value) {
     if(!available)throw new Error('AUTOSTART_'+reason);
     const requested=!!value;
-    try {app.setLoginItemSettings({...identity,openAtLogin:requested,...(platform==='win32'?{name:'Shixu Desktop',enabled:requested}:{})});}
+    try {app.setLoginItemSettings({...identity,openAtLogin:requested,...(platform==='win32'?{name:entryName,enabled:requested}:{})});}
     catch(cause){throw new Error('AUTOSTART_SET_FAILED',{cause});}
     const actual=get();
     if(actual.openAtLogin!==requested&&!actual.pendingApproval&&!actual.blocked)throw new Error('AUTOSTART_NOT_APPLIED');

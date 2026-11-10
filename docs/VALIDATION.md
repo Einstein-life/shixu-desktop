@@ -1,17 +1,13 @@
-# Validation for v1.0.4
+# Validation for v1.0.5
 
-## Source and floating-panel checks
+Source validation and 107 automated tests passed before publication. Windows startup tests reproduce Electron 33's custom-name/default-AppUserModelID distinction, require correct quoting, match the exact per-user executable and arguments, and recognize disabled items. Existing floating-panel and research-record checks remain in the suite.
 
-Source checks and 103 automated tests passed before publication. Regressions cover compact-panel task visibility and dragging the ball while preserving click-to-expand. Repeated expand/collapse cycles followed by Edge mode now return to the ball, and the palette is checked in both language bundles. Dragged coordinates persist through panel size changes and are clamped to the work area on displays with negative origins.
+The published Windows installer reuses the author-tested binary without rebuilding it. SHA-256: 4fb36f14b14b8369d7286ea99172d6ca6b849060b852ad772c1b5ab789b0a9aa. The author reported testing complete and requested publication; a step-by-step manual log or reboot measurement was not collected.
 
-The actual English renderer was exercised in Chromium. Pointer dragging moved the ball without expanding it; clicking without movement expanded it. In edge mode, hover revealed the panel after a short delay, while pressing and dragging the ball cancelled that reveal. Both language bundles are generated and syntax-checked.
+The release job checks this hash, installs v1.0.4 into a clean Windows runner, starts it using synthetic records, installs the tested v1.0.5 file in the same directory, checks the installed version and packaged source, verifies retained records/settings/linked files, and checks fresh startup. When comparing the reused Windows package with a Git checkout, only CRLF/LF conversions are allowed and reported per file; all other source differences fail verification. The installed startup module is then exercised using a random temporary startup entry, covering enable/read/disable/re-enable/remove and path parsing. The temporary entry is removed automatically. A Windows logoff or reboot is outside that automated check.
 
-## Platform package checks
+Native Intel and Apple Silicon macOS runners build from the same commit and verify source integrity, architecture, ad-hoc signatures, DMG/ZIP integrity and isolated startup with synthetic records. macOS launch-at-login behavior is unchanged; these checks do not establish a new native macOS login-item acceptance test.
 
-The release workflow runs source checks and automated tests on Windows x64 and native Intel/Apple Silicon macOS runners. It verifies 19 packaged application files against the build source and starts the application for at least five seconds with an isolated empty profile, confirming that examples are not loaded automatically.
-
-Windows additionally installs v1.0.3 into an isolated directory, starts it with synthetic project/task/experiment records and a saved floating-ball position, installs v1.0.4 over the same directory, verifies the installed version and source, and checks that records, settings and the referenced synthetic file remain available. No real user profile is used. macOS checks the native architecture, ad-hoc signature, DMG/ZIP integrity and startup with a synthetic retained-record profile.
-
-A successful workflow and the attached platform JSON reports establish completion of those package checks. SHA-256 manifests identify the downloadable binaries. These checks do not replace full manual acceptance testing on every target device, including notifications and device-specific installation behavior.
+The application identity and local data directory remain unchanged. Successful workflow results and attached reports record the platform outcomes. SHA-256 manifests identify each downloadable binary. These checks cover the specified behavior and do not replace manual acceptance testing on every target device.
 
 Windows publisher signing is not configured. macOS packages use ad-hoc signatures and are not Developer ID signed or notarized.
