@@ -50,6 +50,16 @@ app.whenReady().then(async()=>{
   socket=new WebSocket(target.webSocketDebuggerUrl);
   socket.on('message',raw=>{const r=JSON.parse(raw.toString()),p=pending.get(r.id);if(!p)return;pending.delete(r.id);if(r.error)p.reject(Error(JSON.stringify(r.error)));else p.resolve(r.result);});
   await new Promise((resolve,reject)=>{socket.once('open',resolve);socket.once('error',reject);});
+  let ready=false;
+  for(let n=0;n<160;n++){
+   ready=await evaluate('typeof setDisplayMode==="function" && typeof hideToEdge==="function" && Boolean(window.shixu)');
+   if(ready)break;
+   await pause(100);
+  }
+  if(!ready){
+   report.notReady=await evaluate('({url:location.href,readyState:document.readyState,api:Boolean(window.shixu),scripts:Array.from(document.scripts).map(s=>s.src||s.textContent.slice(0,80))})');
+   throw Error('Packaged renderer did not finish initialization');
+  }
   await evaluate('pointerOverDock=()=>false; setDisplayMode("edge").then(()=>hideToEdge());');
   await pause(1400);
   for(const phase of ['normal-startup','after-resizes']){
