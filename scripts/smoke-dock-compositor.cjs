@@ -36,7 +36,9 @@ const delta=(a,b)=>Math.max(...a.map((v,i)=>Math.abs(v-b[i])));
 app.whenReady().then(async()=>{
  try{
   report.os=execFileSync('/usr/bin/sw_vers',[],{encoding:'utf8'}).trim();
-  const copy=path.join(temp,'Shixu Desktop.app');fs.cpSync(original,copy,{recursive:true});
+  const copy=path.join(temp,'Shixu Desktop.app');
+  // Electron's patched fs treats app.asar as a directory; ditto preserves the real bundle bytes/symlinks.
+  execFileSync('/usr/bin/ditto',[original,copy],{stdio:'pipe',timeout:30000});
   const archive=path.join(copy,'Contents/Resources/app.asar'),folder=path.join(temp,'source');asar.extractAll(archive,folder);
   const main=path.join(folder,'electron/main.js'),source=fs.readFileSync(main,'utf8'),anchor="  dockWindow.loadFile(pagePath('dock'));";
   if(source.split(anchor).length!==2)throw Error('Floating window startup anchor is not unique');
