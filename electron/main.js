@@ -211,7 +211,10 @@ function createDockWindow() {
     y: Math.max(8, Math.floor(sh * 0.22)),
     frame: false,
     transparent: true,
-    resizable: true,
+    backgroundColor: '#00000000',
+    hasShadow: false,
+    // Native resizing can break transparent windows on macOS. Our controls still use setBounds.
+    resizable: process.platform !== 'darwin',
     maximizable: false,
     fullscreenable: false,
     alwaysOnTop: true,

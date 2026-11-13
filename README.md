@@ -25,6 +25,8 @@ The [release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v
 
 ## How it supports research
 
+For the macOS floating-ball white-background fix, the [v1.0.6 test prerelease](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.6) includes native Intel and Apple Silicon packages. The desktop appearance is awaiting author verification; [test steps](docs/TEST-v1.0.6-MAC-TRANSPARENCY.md) describe what to check. Stable downloads above remain at v1.0.5.
+
 ### Connect experiments and analyses
 
 Create a project around a research question, select and edit an analysis scaffold, then record sample information, software and reference versions, parameters, QC decisions, findings and limitations. Link local files, web reports or remote paths to a project or an individual workflow step.
