@@ -1,0 +1,33 @@
+name: Diagnose visible macOS floating-ball compositor
+on:
+  push:
+    branches: [codex/mac-ball-onscreen-20261113]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  intel-sequoia:
+    runs-on: macos-15-intel
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Capture visible synthetic windows with each native configuration
+        run: |
+          set -uo pipefail
+          mkdir -p diagnostics
+          failed=0
+          for config in current borderless panel skiptransform refreshclear textured; do
+            SHIXU_PROBE_CONFIG="$config" env -u ELECTRON_RUN_AS_NODE node_modules/electron/dist/Electron.app/Contents/MacOS/Electron scripts/diagnose-mac-onscreen.cjs || failed=1
+          done
+          echo "Diagnostic process failures: $failed"
+          node -e "const fs=require('fs');for(const f of fs.readdirSync('diagnostics').filter(f=>f.endsWith('.json'))){const r=JSON.parse(fs.readFileSync('diagnostics/'+f));console.log(JSON.stringify({config:r.config,os:r.os,valid:r.valid,transparent:r.allStagesTransparent,stages:r.stages.map(s=>({stage:s.name,white:s.whiteSamples,background:s.backdropVisibleOutsideBall,ball:s.ballDetected})),error:r.error}));}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mac-visible-transparency-diagnostics
+          path: diagnostics/
