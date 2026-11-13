@@ -16,6 +16,14 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Build the real application and prepare CDP diagnostics
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          set -euo pipefail
+          node scripts/make-icns.js
+          npx electron-builder --mac dir --x64 --publish never --config.directories.output=diagnostic-build
+          npm install --no-save --package-lock=false ws@8
       - name: Capture visible synthetic windows with each native configuration
         run: |
           set -uo pipefail
@@ -26,6 +34,15 @@ jobs:
           done
           echo "Diagnostic process failures: $failed"
           node -e "const fs=require('fs');for(const f of fs.readdirSync('diagnostics').filter(f=>f.endsWith('.json'))){const r=JSON.parse(fs.readFileSync('diagnostics/'+f));console.log(JSON.stringify({config:r.config,os:r.os,valid:r.valid,transparent:r.allStagesTransparent,stages:r.stages.map(s=>({stage:s.name,white:s.whiteSamples,background:s.backdropVisibleOutsideBall,ball:s.ballDetected})),error:r.error}));}"
+      - name: Capture normal packaged application startup and window resize
+        run: |
+          set -uo pipefail
+          APP='diagnostic-build/mac/Shixu Desktop.app'
+          for config in current borderless panel skiptransform readyclear; do
+            node scripts/prepare-onscreen-variant.cjs "$APP" "$config" || exit 1
+            env -u ELECTRON_RUN_AS_NODE node_modules/electron/dist/Electron.app/Contents/MacOS/Electron scripts/diagnose-packaged-mac-onscreen.cjs "$APP/Contents/MacOS/Shixu Desktop" "packaged-$config" || true
+          done
+          node -e "const fs=require('fs');for(const f of fs.readdirSync('diagnostics').filter(f=>f.startsWith('packaged-')&&f.endsWith('.json'))){const r=JSON.parse(fs.readFileSync('diagnostics/'+f));console.log(JSON.stringify({label:r.label,os:r.os,valid:r.valid,transparent:r.transparent,stages:r.stages.map(s=>({phase:s.phase,white:s.whiteSamples,background:s.backdropVisible,ball:s.ballDetected})),error:r.error}));}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
