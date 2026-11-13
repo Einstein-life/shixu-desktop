@@ -5,14 +5,17 @@ const backup=archive+'.diagnostic-original';
 if(!fs.existsSync(backup))fs.copyFileSync(archive,backup);
 fs.copyFileSync(backup,archive);
 (async()=>{
- if(label!=='current'){
+ {
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'shixu-variant-'));asar.extractAll(archive,folder);
   const file=path.join(folder,'electron/main.js');let source=fs.readFileSync(file,'utf8');
-  if(label==='borderless')source=source.replace("    backgroundColor: '#00000000',","    backgroundColor: '#00000000',\n    roundedCorners: false,");
+  if(label==='current'){}
+  else if(label==='borderless')source=source.replace("    backgroundColor: '#00000000',","    backgroundColor: '#00000000',\n    roundedCorners: false,");
   else if(label==='panel')source=source.replace("    backgroundColor: '#00000000',","    backgroundColor: '#00000000',\n    roundedCorners: false,\n    type: 'panel',");
   else if(label==='skiptransform')source=source.replace('visibleOnFullScreen: true','visibleOnFullScreen: true, skipTransformProcessType: true');
   else if(label==='readyclear')source=source.replace("  dockWindow.loadFile(pagePath('dock'));","  dockWindow.webContents.on('did-finish-load',()=>dockWindow.setBackgroundColor('#00000000'));\n  dockWindow.on('show',()=>dockWindow.setBackgroundColor('#00000000'));\n  dockWindow.loadFile(pagePath('dock'));");
+  else if(label==='showwhenready')source=source.replace("    transparent: true,","    transparent: true,\n    show: false,").replace("  dockWindow.loadFile(pagePath('dock'));","  dockWindow.once('ready-to-show',()=>dockWindow.showInactive());\n  dockWindow.loadFile(pagePath('dock'));");
   else throw Error('Unknown package variant');
+  source=source.replace("  dockWindow.loadFile(pagePath('dock'));","  if(process.env.SHIXU_PROBE_CAPTURE_HANDLER){const target=dockWindow;target.webContents.once('did-finish-load',()=>require(process.env.SHIXU_PROBE_CAPTURE_HANDLER)({window:target}));}\n  dockWindow.loadFile(pagePath('dock'));");
   fs.writeFileSync(file,source);await asar.createPackage(folder,archive);
  }
  const hash=crypto.createHash('sha256').update(asar.getRawHeader(archive).headerString).digest('hex');
