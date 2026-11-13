@@ -26,7 +26,7 @@ app.whenReady().then(async()=>{
   let options;
   class CaptureWindow{
    constructor(value){options=value;}
-   setAlwaysOnTop(){}setVisibleOnAllWorkspaces(){}loadFile(){}on(){}
+   setAlwaysOnTop(){}setVisibleOnAllWorkspaces(){}loadFile(){}on(){}once(){}
   }
   vm.runInNewContext(source.slice(start,end)+'\ncreateDockWindow();',{
    dockExpanded:false,dockBallDrag:null,dockWindow:null,screen,

@@ -1,0 +1,85 @@
+name: Build v1.0.7 macOS transparency test packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: test-v1.0.7-macos
+  cancel-in-progress: false
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x64
+            app_dir: mac
+            mach_arch: x86_64
+          - runner: macos-15
+            arch: arm64
+            app_dir: mac-arm64
+            mach_arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run localize
+      - run: npm run check
+      - run: npm test
+      - run: node scripts/make-icns.js
+      - name: Build native macOS DMG and ZIP
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          set -euo pipefail
+          node -e "if(process.arch!=='${{ matrix.arch }}')throw Error('Native runner architecture mismatch')"
+          npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never --config.directories.output=mac
+      - name: Verify packaged source, signature, startup and retained records
+        run: |
+          set -euo pipefail
+          APP="mac/${{ matrix.app_dir }}/Shixu Desktop.app"
+          /usr/bin/lipo "$APP/Contents/MacOS/Shixu Desktop" -verify_arch ${{ matrix.mach_arch }}
+          codesign --verify --deep --strict "$APP"
+          node scripts/verify-packages.cjs "$APP/Contents/Resources/app.asar"
+          node scripts/smoke-desktop.cjs "$APP/Contents/MacOS/Shixu Desktop" mac
+          PROFILE="$RUNNER_TEMP/shixu-transparency-records"
+          node scripts/smoke-upgrade.cjs prepare "$PROFILE"
+          node scripts/smoke-upgrade.cjs check "$APP/Contents/MacOS/Shixu Desktop" "$PROFILE" mac/preserved-data-mac-${{ matrix.arch }}.json
+          hdiutil verify mac/Shixu-Desktop-1.0.7-mac-${{ matrix.arch }}.dmg
+          unzip -tq mac/Shixu-Desktop-1.0.7-mac-${{ matrix.arch }}.zip
+          mv mac/package-verification.json mac/package-verification-mac-${{ matrix.arch }}.json
+          mv mac/startup-smoke.json mac/startup-smoke-mac-${{ matrix.arch }}.json
+      - name: Check native window configuration and captured transparent pixels
+        run: |
+          set -euo pipefail
+          APP="mac/${{ matrix.app_dir }}/Shixu Desktop.app"
+          env -u ELECTRON_RUN_AS_NODE node_modules/electron/dist/Electron.app/Contents/MacOS/Electron scripts/smoke-dock-transparency.cjs "$APP/Contents/Resources/app.asar" "mac/native-transparency-mac-${{ matrix.arch }}.json"
+      - name: Verify the visible packaged application against a synthetic desktop backdrop
+        run: |
+          set -euo pipefail
+          APP="mac/${{ matrix.app_dir }}/Shixu Desktop.app"
+          env -u ELECTRON_RUN_AS_NODE node_modules/electron/dist/Electron.app/Contents/MacOS/Electron scripts/smoke-dock-compositor.cjs "$APP" "mac/desktop-compositor-mac-${{ matrix.arch }}.json"
+      - name: Calculate checksums and attach test packages to draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shasum -a 256 mac/Shixu-Desktop-1.0.7-mac-${{ matrix.arch }}.dmg mac/Shixu-Desktop-1.0.7-mac-${{ matrix.arch }}.zip | sed 's|mac/||' > mac/SHA256SUMS-mac-${{ matrix.arch }}.txt
+          gh release view v1.0.7 --json isDraft,isPrerelease,targetCommitish > existing-release.json
+          node -e "const r=require('./existing-release.json');if(!r.isDraft||!r.isPrerelease||r.targetCommitish!==process.env.GITHUB_SHA)throw Error('Test release does not match build commit')"
+          gh release upload v1.0.7 mac/*-mac-${{ matrix.arch }}.* mac/*-mac-${{ matrix.arch }}-*.png --clobber
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transparency-${{ matrix.arch }}-validation
+          path: |
+            mac/*.json
+            mac/*.txt
+            mac/*.png
+            mac/builder-debug.yml

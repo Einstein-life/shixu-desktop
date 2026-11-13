@@ -211,6 +211,8 @@ function createDockWindow() {
     y: Math.max(8, Math.floor(sh * 0.22)),
     frame: false,
     transparent: true,
+    // On macOS, exposing the surface before its first paint can leave an opaque white backing.
+    show: process.platform !== 'darwin',
     backgroundColor: '#00000000',
     hasShadow: false,
     // Native resizing can break transparent windows on macOS. Our controls still use setBounds.
@@ -228,6 +230,15 @@ function createDockWindow() {
       sandbox: false
     }
   });
+  const target = dockWindow;
+  target._firstFrameReady = process.platform !== 'darwin';
+  target._visibilityRequested = true;
+  if (process.platform === 'darwin') {
+    target.once('ready-to-show', () => {
+      target._firstFrameReady = true;
+      if (dockWindow === target && !target.isDestroyed() && target._visibilityRequested) target.showInactive();
+    });
+  }
   if (validDockBallPosition(loadSettings().dockBallPosition)) placePanel(w, h, false);
   dockWindow.setAlwaysOnTop(true, 'screen-saver');
   dockWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -243,6 +254,21 @@ function createDockWindow() {
     dockBallDrag = null;
     dockWindow = null;
   });
+}
+
+function setDockWindowVisible(visible) {
+  if (!dockWindow || dockWindow.isDestroyed()) {
+    if (visible) createDockWindow();
+    return;
+  }
+  dockWindow._visibilityRequested = !!visible;
+  if (!visible) dockWindow.hide();
+  else if (dockWindow._firstFrameReady) dockWindow.showInactive();
+}
+
+function toggleDockWindowVisible() {
+  if (!dockWindow || dockWindow.isDestroyed()) createDockWindow();
+  else setDockWindowVisible(!dockWindow._visibilityRequested);
 }
 
 function createTray() {
@@ -262,11 +288,7 @@ function createTray() {
       },
       {
         label: tr('显示/隐藏悬浮窗', 'Show / hide floating panel'),
-        click: () => {
-          if (!dockWindow) createDockWindow();
-          else if (dockWindow.isVisible()) dockWindow.hide();
-          else dockWindow.show();
-        }
+        click: toggleDockWindowVisible
       },
       {
         label: tr('导出数据…', 'Export data…'),
@@ -299,9 +321,7 @@ function createTray() {
         activateMainWindow();
         return;
       }
-      if (!dockWindow) createDockWindow();
-      else if (dockWindow.isVisible()) dockWindow.hide();
-      else dockWindow.show();
+      toggleDockWindowVisible();
     });
   } catch (err) {
     console.error('tray failed', err);
@@ -623,7 +643,7 @@ ipcMain.handle('shixu:open-main', () => {
 });
 
 ipcMain.handle('shixu:hide-dock', () => {
-  if (dockWindow) dockWindow.hide();
+  setDockWindowVisible(false);
   return true;
 });
 
@@ -645,11 +665,7 @@ function updateMacMenu() {
       },
       {
         label: tr('显示/隐藏悬浮窗', 'Show / hide floating panel'),
-        click: () => {
-          if (!dockWindow) createDockWindow();
-          else if (dockWindow.isVisible()) dockWindow.hide();
-          else dockWindow.show();
-        }
+        click: toggleDockWindowVisible
       }
     ]);
     app.dock.setMenu(dockMenu);

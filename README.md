@@ -25,7 +25,7 @@ The [release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v
 
 ## How it supports research
 
-For the macOS floating-ball white-background fix, the [v1.0.6 test prerelease](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.6) includes native Intel and Apple Silicon packages. The desktop appearance is awaiting author verification; [test steps](docs/TEST-v1.0.6-MAC-TRANSPARENCY.md) describe what to check. Stable downloads above remain at v1.0.5.
+For the macOS floating-ball white-background fix, the [v1.0.7 test prerelease](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.7) includes native Intel and Apple Silicon packages. The desktop appearance is awaiting author verification; [test steps](docs/TEST-v1.0.7-MAC-FIRST-PAINT.md) describe what to check. Stable downloads above remain at v1.0.5.
 
 ### Connect experiments and analyses
 
