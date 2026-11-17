@@ -11,21 +11,23 @@ Shixu Desktop helps molecular biology, plant science and bioinformatics research
 
 Research records stay on the computer. Shixu links project plans, experiment results, analysis steps and files without requiring a cloud account or moving original data.
 
-## Download v1.0.5
+## Downloads
 
-| Platform | Installer |
-| --- | --- |
-| Windows 10/11, x64 | [Download Windows installer](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.5/Shixu-Desktop-1.0.5-win-x64.exe) |
-| macOS, Apple Silicon (M series) | [Download Apple Silicon DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.5/Shixu-Desktop-1.0.5-mac-arm64.dmg) |
-| macOS, Intel | [Download Intel DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.5/Shixu-Desktop-1.0.5-mac-x64.dmg) |
+**v1.0.7 is the latest stable release for Intel Macs.** The author confirmed that the Mac build works normally after testing; this release promotes the same tested packages without rebuilding them.
 
-The [release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.5) also includes macOS ZIP archives, SHA-256 checksums and validation reports.
+| Platform | Stable version | Installer |
+| --- | --- | --- |
+| macOS, Intel | v1.0.7 | [Download Intel DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.7/Shixu-Desktop-1.0.7-mac-x64.dmg) |
+| Windows 10/11, x64 | v1.0.5 | [Download Windows installer](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.5/Shixu-Desktop-1.0.5-win-x64.exe) |
+| macOS, Apple Silicon (M series) | v1.0.5 | [Download Apple Silicon DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.5/Shixu-Desktop-1.0.5-mac-arm64.dmg) |
+
+The [v1.0.7 release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.7) includes the Intel ZIP archive, SHA-256 checksums and validation reports. Windows and Apple Silicon installers remain available from [v1.0.5](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.5). Apple Silicon v1.0.7 is withheld pending its visible desktop verification; the Intel test confirmation applies to the Intel package.
 
 **Signing status:** The Windows installer does not have a publisher certificate. The macOS apps use ad-hoc signatures; they are not Developer ID signed or notarized. Your operating system may display a publisher or security approval notice. Follow the system’s normal prompts; do not disable security protections.
 
 ## How it supports research
 
-For the macOS floating-ball white-background fix, the [v1.0.7 Intel test prerelease](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.7) provides Intel DMG and ZIP packages. Intel desktop screenshot checks passed on Sequoia 15.7.9; the author's own Mac retest is pending. Apple Silicon packages are withheld because their visible desktop check did not pass. See the [test steps](docs/TEST-v1.0.7-MAC-FIRST-PAINT.md). Stable downloads above remain at v1.0.5.
+The [v1.0.7 release notes](docs/RELEASE-v1.0.7.md) describe the Intel floating-ball white-background fix and its validation. The floating window waits for its first rendered frame before appearing and respects startup hide/show requests.
 
 ### Connect experiments and analyses
 
@@ -58,7 +60,7 @@ Use the Launch at login button to enable or disable the installed app. The setti
 
 Projects, examples, and archived projects can be deleted with confirmation. Associated tasks and experiments are kept by default; optional cascade deletion preserves experiments shared by other projects. A backup is required before deletion, and linked files remain on disk. The floating ball stays visible when the main window is minimized. Launching the app again activates the existing application instance.
 
-To upgrade from v1.0.4, quit Shixu (including the tray/background instance) and install the new version in the same location, or replace the existing macOS app. The application identity and local data directory are unchanged. Export a JSON backup before updating; linked research files stay in their original locations.
+To upgrade, quit Shixu (including the tray/background instance) and install the appropriate version in the same location, or replace the existing macOS app. The application identity and local data directory are unchanged. Export a JSON backup before updating; linked research files stay in their original locations.
 
 ## English-first onboarding
 
