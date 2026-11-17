@@ -40,6 +40,12 @@ app.whenReady().then(async()=>{
   // Electron's patched fs treats app.asar as a directory; ditto preserves the real bundle bytes/symlinks.
   execFileSync('/usr/bin/ditto',[original,copy],{stdio:'pipe',timeout:30000});
   const archive=path.join(copy,'Contents/Resources/app.asar'),folder=path.join(temp,'source');asar.extractAll(archive,folder);
+  // Await the renderer's real asynchronous startup in this disposable copy before driving geometry.
+  for(const name of ['dock.html','dock.en.html']){
+   const page=path.join(folder,'renderer',name),html=fs.readFileSync(page,'utf8'),initAnchor='    init();';
+   if(html.split(initAnchor).length!==2)throw Error('Floating renderer initialization anchor is not unique');
+   fs.writeFileSync(page,html.replace(initAnchor,'    window.__shixuCaptureInit = init();'));
+  }
   const main=path.join(folder,'electron/main.js'),source=fs.readFileSync(main,'utf8'),anchor="  dockWindow.loadFile(pagePath('dock'));";
   if(source.split(anchor).length!==2)throw Error('Floating window startup anchor is not unique');
   const injection="  {const captureTarget=dockWindow;captureTarget.webContents.once('did-finish-load',()=>require(process.env.SHIXU_COMPOSITOR_HOOK)({window:captureTarget}));}\n";
@@ -49,6 +55,11 @@ app.whenReady().then(async()=>{
   execFileSync('/usr/bin/codesign',['--force','--deep','--sign','-','--timestamp=none',copy],{stdio:'pipe',timeout:30000});
   const wa=screen.getPrimaryDisplay().workArea,ball={x:wa.x+wa.width-100,y:wa.y+150,width:56,height:56};
   back=new BrowserWindow({x:wa.x+30,y:wa.y+30,width:wa.width-60,height:wa.height-60,frame:false,backgroundColor:'#214F73',show:false,webPreferences:{sandbox:true}});
+  // A normal application window can cover this backdrop on a small CI display.
+  // Keep it above normal windows but below the production dock's screen-saver level.
+  back.setAlwaysOnTop(true,'floating');
+  report.backdropLevel='floating (below the production floating window)';
+  report.rendererInitializationAwaited=true;
   await back.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent('<!doctype html><style>html,body{margin:0;width:100%;height:100%;background:#214F73}</style>'));
   back.showInactive();await pause(500);
   report.baseline=screenshot('backdrop',ball);
@@ -75,7 +86,7 @@ app.whenReady().then(async()=>{
    if(!done||done.error)throw Error(done?.error||'No synchronized screenshot result: '+output.slice(-1400));
    const result={lang,phases,renderer:done.renderer,passed:phases.length===2&&phases.every(p=>p.backdropVisible&&p.ballDetected&&p.whiteSamples===0)};
    report.languages.push(result);await stopChild();await pause(150);
-   if(!result.passed)throw Error('Desktop white backing reproduced for '+lang);
+   if(!result.passed)throw Error('Visible ball pixels do not match the controlled backdrop for '+lang);
   }
   report.passed=true;await finish(0);
  }catch(error){report.passed=false;report.error=error.stack;await finish(1);}

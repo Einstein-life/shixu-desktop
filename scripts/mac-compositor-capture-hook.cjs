@@ -14,6 +14,7 @@ module.exports=async function({window:win}){
  try{
   for(let n=0;n<140&&!win.isVisible();n++)await pause(50);
   if(!win.isVisible())throw Error('Floating window did not reveal after first frame');
+  await win.webContents.executeJavaScript('window.__shixuCaptureInit');
   await win.webContents.executeJavaScript('pointerOverDock=()=>false;void 0;');
   await win.webContents.executeJavaScript('setDisplayMode("edge").then(()=>hideToEdge());');
   await capture('normal-startup');

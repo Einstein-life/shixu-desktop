@@ -13,21 +13,21 @@ Research records stay on the computer. Shixu links project plans, experiment res
 
 ## Downloads
 
-**v1.0.7 is the latest stable release for Intel Macs.** The author confirmed that the Mac build works normally after testing; this release promotes the same tested packages without rebuilding them.
+**v1.1.0 is the unified stable release for Windows and macOS.** Installer filenames and the version recorded inside each application use 1.1.0.
 
 | Platform | Stable version | Installer |
 | --- | --- | --- |
-| macOS, Intel | v1.0.7 | [Download Intel DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.7/Shixu-Desktop-1.0.7-mac-x64.dmg) |
-| Windows 10/11, x64 | v1.0.5 | [Download Windows installer](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.5/Shixu-Desktop-1.0.5-win-x64.exe) |
-| macOS, Apple Silicon (M series) | v1.0.5 | [Download Apple Silicon DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.0.5/Shixu-Desktop-1.0.5-mac-arm64.dmg) |
+| Windows 10/11, x64 | v1.1.0 | [Download Windows installer](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.1.0/Shixu-Desktop-1.1.0-win-x64.exe) |
+| macOS, Intel | v1.1.0 | [Download Intel DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.1.0/Shixu-Desktop-1.1.0-mac-x64.dmg) |
+| macOS, Apple Silicon (M series) | v1.1.0 | [Download Apple Silicon DMG](https://github.com/Einstein-life/shixu-desktop/releases/download/v1.1.0/Shixu-Desktop-1.1.0-mac-arm64.dmg) |
 
-The [v1.0.7 release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.7) includes the Intel ZIP archive, SHA-256 checksums and validation reports. Windows and Apple Silicon installers remain available from [v1.0.5](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.0.5). Apple Silicon v1.0.7 is withheld pending its visible desktop verification; the Intel test confirmation applies to the Intel package.
+The [v1.1.0 release page](https://github.com/Einstein-life/shixu-desktop/releases/tag/v1.1.0) contains all three platform installers, macOS ZIP archives, SHA-256 checksums and validation reports.
 
 **Signing status:** The Windows installer does not have a publisher certificate. The macOS apps use ad-hoc signatures; they are not Developer ID signed or notarized. Your operating system may display a publisher or security approval notice. Follow the system’s normal prompts; do not disable security protections.
 
 ## How it supports research
 
-The [v1.0.7 release notes](docs/RELEASE-v1.0.7.md) describe the Intel floating-ball white-background fix and its validation. The floating window waits for its first rendered frame before appearing and respects startup hide/show requests.
+The [v1.1.0 release notes](docs/RELEASE-v1.1.0.md) describe the unified packages and floating-ball fix. On macOS, the floating window waits for its first rendered frame before appearing and respects startup hide/show requests.
 
 ### Connect experiments and analyses
 

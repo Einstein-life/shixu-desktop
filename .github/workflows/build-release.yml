@@ -5,4 +5,4 @@ jobs:
   information:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Use the Release v1.0.1 workflow for current packages."
+      - run: echo "Use the Release v1.1.0 desktop packages workflow for current packages."
