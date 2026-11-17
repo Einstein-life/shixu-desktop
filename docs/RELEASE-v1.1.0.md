@@ -35,6 +35,8 @@ The release workflow runs automated tests and checks packaged sources, internal 
 
 Desktop captures use a disposable signed application copy with a capture synchronization hook. The controlled background is kept above normal windows and below Shixu's floating window, including on small displays; renderer initialization completes before the capture sequence. The distributed application is unchanged by this verification.
 
+The screen check records every sampled frame and requires two consecutive transparent-ball captures within four seconds of each synchronized ball state. Initial stale compositor frames are retained in the report. A persistent opaque backing or a ball that does not settle within this bound fails validation.
+
 The author confirmed normal use of the preceding Intel Mac build. v1.1.0 has a new build and its own automated validation reports; an itemized user test of the rebuilt packages is not inferred.
 
 Windows installers do not have a publisher certificate. macOS packages use ad-hoc signatures and are not Developer ID signed or notarized.

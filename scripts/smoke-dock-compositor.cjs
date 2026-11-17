@@ -33,6 +33,20 @@ function screenshot(label,bounds){
  return {filename,outside:[[44,12],[44,44],[12,44],[40,30]].map(([x,y])=>rgb(x,y)),center:rgb(20,20)};
 }
 const delta=(a,b)=>Math.max(...a.map((v,i)=>Math.abs(v-b[i])));
+async function captureSettledBall(label,bounds){
+ const started=Date.now(),observations=[];let consecutive=0,latest;
+ for(let attempt=0;attempt<10&&Date.now()-started<4000;attempt++){
+  const image=screenshot(label+'-frame-'+attempt,bounds),differences=image.outside.map((v,i)=>delta(v,report.baseline.outside[i]));
+  latest={...image,outsideDifferences:differences,backdropVisible:differences.every(v=>v<18),ballDetected:delta(image.center,report.baseline.center)>45,whiteSamples:image.outside.filter(v=>v.every(c=>c>=235)).length};
+  const matches=latest.backdropVisible&&latest.ballDetected&&latest.whiteSamples===0;
+  observations.push({...latest,elapsedMs:Date.now()-started,matches});
+  consecutive=matches?consecutive+1:0;
+  if(consecutive===2)break;
+  await pause(250);
+ }
+ const settledAfterMs=Date.now()-started;
+ return {...latest,observations,settled:consecutive===2&&settledAfterMs<=4000,settledAfterMs};
+}
 app.whenReady().then(async()=>{
  try{
   report.os=execFileSync('/usr/bin/sw_vers',[],{encoding:'utf8'}).trim();
@@ -76,15 +90,15 @@ app.whenReady().then(async()=>{
     let state;try{state=JSON.parse(fs.readFileSync(path.join(profile,'capture-phase.json'),'utf8'));}catch{}
     if(state&&!seen.has(state.phase)){
      if(state.bounds.width!==56||state.bounds.height!==56)throw Error('Window did not return to ball size');
-     const image=screenshot(lang+'-'+state.phase,state.bounds),differences=image.outside.map((v,i)=>delta(v,report.baseline.outside[i]));
-     phases.push({...state,...image,outsideDifferences:differences,backdropVisible:differences.every(v=>v<18),ballDetected:delta(image.center,report.baseline.center)>45,whiteSamples:image.outside.filter(v=>v.every(c=>c>=235)).length});
+     const capture=await captureSettledBall(lang+'-'+state.phase,state.bounds);
+     phases.push({...state,...capture});
      seen.add(state.phase);fs.writeFileSync(path.join(profile,'capture-ack.json'),JSON.stringify({phase:state.phase}));
     }
     try{done=JSON.parse(fs.readFileSync(path.join(profile,'capture-done.json'),'utf8'));}catch{}
     if(done)break;await pause(50);
    }
    if(!done||done.error)throw Error(done?.error||'No synchronized screenshot result: '+output.slice(-1400));
-   const result={lang,phases,renderer:done.renderer,passed:phases.length===2&&phases.every(p=>p.backdropVisible&&p.ballDetected&&p.whiteSamples===0)};
+   const result={lang,phases,renderer:done.renderer,passed:phases.length===2&&phases.every(p=>p.settled&&p.backdropVisible&&p.ballDetected&&p.whiteSamples===0)};
    report.languages.push(result);await stopChild();await pause(150);
    if(!result.passed)throw Error('Visible ball pixels do not match the controlled backdrop for '+lang);
   }
