@@ -28,12 +28,14 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
-          $installDir=Join-Path $env:RUNNER_TEMP 'Shixu 1.1.0 installed app'
+          $installDir=Join-Path $env:RUNNER_TEMP 'shixu-release-install'
           $profileDir=Join-Path $env:RUNNER_TEMP 'shixu-retained-profile'
           $installer=(Resolve-Path -LiteralPath win/Shixu-Desktop-1.1.0-win-x64.exe).Path
           $install=Start-Process -FilePath $installer -ArgumentList @('/S',"/D=$installDir") -Wait -PassThru -WindowStyle Hidden
           if ($install.ExitCode -ne 0) { throw 'Installer failed' }
           $exe=Join-Path $installDir 'Shixu Desktop.exe'
+          for ($attempt=0; $attempt -lt 40 -and !(Test-Path -LiteralPath $exe); $attempt++) { Start-Sleep -Milliseconds 250 }
+          if (!(Test-Path -LiteralPath $exe)) { throw 'Installed executable missing at the requested NSIS destination' }
           $fileVersion=(Get-Item -LiteralPath $exe).VersionInfo.FileVersion
           if ($fileVersion -notmatch '^1\.1\.0(?:\.|$)') { throw "Unexpected installed version: $fileVersion" }
           node scripts/verify-packages.cjs (Join-Path $installDir 'resources/app.asar')
